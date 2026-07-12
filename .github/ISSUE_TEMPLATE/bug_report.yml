@@ -1,0 +1,83 @@
+name: Bug report
+description: Report a reproducible Tavo Memory Curator problem
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping test the beta. Please avoid posting private role-play content unless it is essential to reproduce the problem.
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      placeholder: 0.5.1-beta
+    validations:
+      required: true
+
+  - type: input
+    id: tavo-version
+    attributes:
+      label: Tavo version
+      placeholder: 0.91.0 or newer
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device and operating system
+      placeholder: Android phone model and Android version
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: Configured model/provider
+      description: Required for Analyze with AI problems; otherwise enter Not applicable.
+      placeholder: Model name and provider
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Opened...
+        2. Selected...
+        3. Observed...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and exact error
+    validations:
+      required: true
+
+  - type: textarea
+    id: raw-response
+    attributes:
+      label: Raw AI response, if relevant
+      description: Remove private story details when possible.
+      render: text
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I reviewed this report and removed unnecessary private content.
+          required: true
