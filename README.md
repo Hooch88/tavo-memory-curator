@@ -8,10 +8,9 @@ Current beta release: **v0.5.1-beta**
 
 ## Downloads
 
-- [Installable Tavo plugin (`.tpg`)](downloads/tavo-memory-curator-0.5.1.tpg?raw=1)
-- [Source archive (`.zip`)](downloads/tavo-memory-curator-0.5.1-source.zip?raw=1)
+- [Installable Tavo plugin (`.tpg`)](https://github.com/Hooch88/tavo-memory-curator/raw/refs/heads/main/downloads/tavo-memory-curator-0.5.1.tpg)
+- [Source archive (`.zip`)](https://github.com/Hooch88/tavo-memory-curator/raw/refs/heads/main/downloads/tavo-memory-curator-0.5.1-source.zip)
 - [Recommended companion summary prompt](TAVO_MEMORY_CURATOR_SUMMARY_PROMPT.md)
-- [SHA-256 checksums](downloads/SHA256SUMS.txt)
 
 ## Why use it?
 
@@ -47,7 +46,7 @@ Basic Cleanup does not require an AI request.
 
 ## Installation
 
-1. Download [`tavo-memory-curator-0.5.1.tpg`](downloads/tavo-memory-curator-0.5.1.tpg?raw=1).
+1. Download [`tavo-memory-curator-0.5.1.tpg`](https://github.com/Hooch88/tavo-memory-curator/raw/refs/heads/main/downloads/tavo-memory-curator-0.5.1.tpg).
 2. Save the file on the Android device running Tavo.
 3. In Tavo, open **Settings → Plugins → Install**.
 4. Select the downloaded `.tpg` file.
