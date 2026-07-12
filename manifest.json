@@ -1,0 +1,23 @@
+{
+  "id": "com.jeremy.tavo-memory-curator",
+  "name": "Tavo Memory Curator",
+  "version": "0.5.1",
+  "specVersion": 1,
+  "minAppVersion": "0.91.0",
+  "author": "Jeremy",
+  "description": "Reviews and consolidates Tavo memories with a token-efficient AI request and portable draggable launcher.",
+  "permissions": [
+    "memory",
+    "generate",
+    "variable"
+  ],
+  "contributes": {
+    "htmlFragments": [
+      {
+        "id": "memory-curator-panel",
+        "src": "ui/panel.html",
+        "mount": "/chat/body/end"
+      }
+    ]
+  }
+}
