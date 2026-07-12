@@ -1,0 +1,1345 @@
+<div id="tmc-root">
+  <button id="tmc-launcher" type="button" aria-label="Open Tavo Memory Curator" title="Tavo Memory Curator">
+    <span class="tmc-launcher-symbol" aria-hidden="true">&#10022;</span>
+    <span class="tmc-launcher-ring" aria-hidden="true"></span>
+  </button>
+
+  <section id="tmc-sheet" class="tmc-hidden" role="dialog" aria-modal="true" aria-labelledby="tmc-title">
+    <div class="tmc-backdrop" data-tmc-close></div>
+    <div class="tmc-panel">
+      <header class="tmc-header">
+        <div>
+          <div class="tmc-eyebrow">REVIEW BEFORE REPLACING</div>
+          <h2 id="tmc-title">Memory Curator</h2>
+        </div>
+        <div class="tmc-header-actions">
+          <button id="tmc-reload" class="tmc-icon-button" type="button" aria-label="Refresh memories" title="Refresh memories">&#8635;</button>
+          <button id="tmc-close" class="tmc-icon-button" type="button" aria-label="Close">&#10005;</button>
+        </div>
+      </header>
+
+      <div class="tmc-content">
+        <section class="tmc-proposal-choices" aria-labelledby="tmc-proposal-title">
+          <div id="tmc-proposal-title" class="tmc-choice-heading">Create a cleanup proposal</div>
+
+          <button id="tmc-ai-clean" class="tmc-choice-button tmc-choice-primary" type="button">
+            <span class="tmc-choice-title-row">
+              <span class="tmc-inline-spinner" aria-hidden="true"></span>
+              <strong id="tmc-ai-label">Analyze with AI</strong>
+              <span class="tmc-recommended">Recommended</span>
+            </span>
+            <span class="tmc-choice-description">Merges overlap, removes duplication, and applies the four memory categories. Uses one private model request.</span>
+          </button>
+
+          <button id="tmc-safe-clean" class="tmc-choice-button" type="button">
+            <strong>Basic Cleanup</strong>
+            <span class="tmc-choice-description">Removes only exact duplicates, empty entries, and formatting-only headings. Does not reinterpret memories.</span>
+          </button>
+        </section>
+
+        <div class="tmc-summary">
+          <div><strong id="tmc-current-count">0</strong><span>Current</span></div>
+          <div><strong id="tmc-proposed-count">—</strong><span>Proposed</span></div>
+          <div><strong id="tmc-removed-count">—</strong><span>Net change</span></div>
+        </div>
+
+        <div id="tmc-status" class="tmc-status" aria-live="polite">Open the curator to load this chat's memories.</div>
+        <div id="tmc-proposal-source" class="tmc-source-chip tmc-hidden" aria-live="polite"></div>
+
+        <section class="tmc-section">
+          <button id="tmc-current-toggle" class="tmc-section-toggle" type="button" aria-expanded="true">
+            <span>Current Tavo Memories</span><span aria-hidden="true">&#9662;</span>
+          </button>
+          <div id="tmc-current-list" class="tmc-list"></div>
+        </section>
+
+        <section class="tmc-section">
+          <button id="tmc-proposed-toggle" class="tmc-section-toggle" type="button" aria-expanded="true">
+            <span>Proposed Memories</span><span aria-hidden="true">&#9662;</span>
+          </button>
+          <div id="tmc-proposed-list" class="tmc-list"></div>
+          <button id="tmc-add" class="tmc-add-button" type="button">+ Add proposed memory</button>
+        </section>
+
+        <section id="tmc-changes-section" class="tmc-section tmc-hidden">
+          <div class="tmc-section-heading">AI explanation</div>
+          <ul id="tmc-changes" class="tmc-changes"></ul>
+        </section>
+
+        <section id="tmc-raw-section" class="tmc-section tmc-hidden">
+          <button id="tmc-raw-toggle" class="tmc-section-toggle" type="button" aria-expanded="false">
+            <span>View Raw AI Response</span><span aria-hidden="true">&#9662;</span>
+          </button>
+          <pre id="tmc-raw-output" class="tmc-raw-output tmc-hidden"></pre>
+        </section>
+
+        <div class="tmc-launcher-setting">
+          <span>Launcher position is saved across chats.</span>
+          <button id="tmc-reset-launcher" type="button">Reset launcher position</button>
+        </div>
+      </div>
+
+      <footer class="tmc-actions">
+        <button id="tmc-apply" class="tmc-button tmc-danger" type="button" disabled>Replace Tavo Memories</button>
+        <button id="tmc-restore" class="tmc-button" type="button" disabled>No backup yet</button>
+      </footer>
+    </div>
+  </section>
+</div>
+
+<style>
+  #tmc-root,
+  #tmc-root * {
+    box-sizing: border-box;
+  }
+
+  #tmc-root {
+    --tmc-bg: #15151a;
+    --tmc-surface: #202027;
+    --tmc-surface-2: #292932;
+    --tmc-text: #f5f4f8;
+    --tmc-muted: #aaa8b2;
+    --tmc-border: rgba(255, 255, 255, 0.11);
+    --tmc-accent: #69c7b4;
+    --tmc-accent-dark: #317e70;
+    --tmc-danger: #d36570;
+    color: var(--tmc-text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  #tmc-launcher {
+    position: fixed;
+    left: calc(100% - 44px);
+    right: auto;
+    top: 72%;
+    bottom: auto;
+    z-index: 2147483000;
+    width: 32px;
+    height: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 50%;
+    background: rgba(14, 14, 17, 0.94);
+    color: white;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.42);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: left 180ms ease, top 180ms ease, transform 120ms ease;
+  }
+
+  #tmc-launcher.tmc-dragging {
+    cursor: grabbing;
+    transform: scale(1.08);
+    transition: none;
+  }
+
+  .tmc-launcher-symbol {
+    position: relative;
+    z-index: 1;
+  }
+
+  .tmc-launcher-ring {
+    position: absolute;
+    inset: -4px;
+    display: none;
+    border: 2px solid transparent;
+    border-top-color: #bff4e9;
+    border-right-color: rgba(191, 244, 233, 0.45);
+    border-radius: 50%;
+  }
+
+  #tmc-root.tmc-working .tmc-launcher-ring {
+    display: block;
+    animation: tmc-spin 0.85s linear infinite;
+  }
+
+  #tmc-sheet {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483001;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  #tmc-sheet.tmc-hidden,
+  .tmc-hidden {
+    display: none;
+  }
+
+  .tmc-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.66);
+    backdrop-filter: blur(3px);
+  }
+
+  .tmc-panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: min(100%, 820px);
+    max-height: 90vh;
+    overflow: hidden;
+    border: 1px solid var(--tmc-border);
+    border-bottom: 0;
+    border-radius: 24px 24px 0 0;
+    background: linear-gradient(180deg, var(--tmc-surface), var(--tmc-bg));
+    box-shadow: 0 -18px 60px rgba(0, 0, 0, 0.55);
+  }
+
+  .tmc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px;
+    border-bottom: 1px solid var(--tmc-border);
+  }
+
+  .tmc-eyebrow {
+    color: #9be2d4;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+  }
+
+  #tmc-title {
+    margin: 3px 0 0;
+    color: var(--tmc-text);
+    font-size: 22px;
+    line-height: 1.15;
+  }
+
+  .tmc-icon-button {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    border: 1px solid var(--tmc-border);
+    border-radius: 12px;
+    background: var(--tmc-surface-2);
+    color: var(--tmc-text);
+    font: inherit;
+  }
+
+  .tmc-actions {
+    display: grid;
+    gap: 8px;
+    padding: 12px 16px;
+    background: rgba(21, 21, 26, 0.82);
+  }
+
+  .tmc-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tmc-actions {
+    grid-template-columns: 1.4fr 1fr;
+    border-top: 1px solid var(--tmc-border);
+    border-bottom: 0;
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+
+  .tmc-button,
+  .tmc-add-button {
+    min-height: 42px;
+    padding: 9px 10px;
+    border: 1px solid var(--tmc-border);
+    border-radius: 11px;
+    background: var(--tmc-surface-2);
+    color: var(--tmc-text);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 750;
+  }
+
+  .tmc-button.tmc-primary {
+    border-color: transparent;
+    background: linear-gradient(135deg, var(--tmc-accent), var(--tmc-accent-dark));
+    color: #071b17;
+  }
+
+  .tmc-button.tmc-danger:not(:disabled) {
+    border-color: rgba(211, 101, 112, 0.65);
+    background: rgba(211, 101, 112, 0.16);
+    color: #ffc4ca;
+  }
+
+  .tmc-button:disabled {
+    opacity: 0.42;
+  }
+
+  .tmc-content {
+    overflow-y: auto;
+    padding: 16px;
+    overscroll-behavior: contain;
+  }
+
+  .tmc-proposal-choices {
+    display: grid;
+    gap: 9px;
+    margin-bottom: 14px;
+  }
+
+  .tmc-choice-heading {
+    color: #d8d6dd;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
+
+  .tmc-choice-button {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+    width: 100%;
+    min-height: 66px;
+    padding: 11px 13px;
+    border: 1px solid var(--tmc-border);
+    border-radius: 13px;
+    background: var(--tmc-surface-2);
+    color: var(--tmc-text);
+    font: inherit;
+    text-align: left;
+  }
+
+  .tmc-choice-button.tmc-choice-primary {
+    border-color: rgba(105, 199, 180, 0.48);
+    background: linear-gradient(135deg, rgba(105, 199, 180, 0.18), rgba(49, 126, 112, 0.12));
+  }
+
+  .tmc-choice-button:disabled {
+    opacity: 0.55;
+  }
+
+  .tmc-choice-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tmc-recommended {
+    margin-left: auto;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: rgba(105, 199, 180, 0.17);
+    color: #9be2d4;
+    font-size: 9px;
+    font-weight: 850;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+
+  .tmc-choice-description {
+    color: var(--tmc-muted);
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .tmc-inline-spinner {
+    display: none;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    border: 2px solid rgba(155, 226, 212, 0.25);
+    border-top-color: #9be2d4;
+    border-radius: 50%;
+  }
+
+  #tmc-root.tmc-working .tmc-inline-spinner {
+    display: inline-block;
+    animation: tmc-spin 0.75s linear infinite;
+  }
+
+  .tmc-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .tmc-summary > div {
+    padding: 10px;
+    border: 1px solid var(--tmc-border);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.035);
+    text-align: center;
+  }
+
+  .tmc-summary strong,
+  .tmc-summary span {
+    display: block;
+  }
+
+  .tmc-summary strong {
+    color: #9be2d4;
+    font-size: 20px;
+  }
+
+  .tmc-summary span {
+    margin-top: 2px;
+    color: var(--tmc-muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .tmc-status {
+    margin: 0 0 14px;
+    color: var(--tmc-muted);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .tmc-source-chip {
+    width: fit-content;
+    margin: -4px 0 14px;
+    padding: 5px 9px;
+    border: 1px solid rgba(105, 199, 180, 0.28);
+    border-radius: 999px;
+    background: rgba(105, 199, 180, 0.08);
+    color: #9be2d4;
+    font-size: 10px;
+    font-weight: 750;
+  }
+
+  .tmc-status {
+    min-height: 18px;
+    padding: 9px 11px;
+    border-left: 3px solid var(--tmc-accent);
+    background: rgba(105, 199, 180, 0.07);
+    color: #c9c7d0;
+  }
+
+  .tmc-section {
+    margin-top: 14px;
+    border: 1px solid var(--tmc-border);
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.025);
+  }
+
+  .tmc-section-toggle,
+  .tmc-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 12px 13px;
+    border: 0;
+    border-bottom: 1px solid var(--tmc-border);
+    background: var(--tmc-surface-2);
+    color: var(--tmc-text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 800;
+    text-align: left;
+  }
+
+  .tmc-list {
+    padding: 10px;
+  }
+
+  .tmc-memory-card {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    gap: 8px;
+    align-items: start;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--tmc-border);
+  }
+
+  .tmc-memory-card:last-child {
+    border-bottom: 0;
+  }
+
+  .tmc-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 25px;
+    height: 25px;
+    border-radius: 8px;
+    background: rgba(105, 199, 180, 0.12);
+    color: #9be2d4;
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .tmc-memory-text,
+  .tmc-proposed-input {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: #e6e4ea;
+    font-size: 12px;
+    line-height: 1.48;
+  }
+
+  .tmc-proposed-input {
+    display: block;
+    width: 100%;
+    min-height: 76px;
+    resize: vertical;
+    padding: 9px 10px;
+    border: 1px solid var(--tmc-border);
+    border-radius: 10px;
+    outline: none;
+    background: rgba(0, 0, 0, 0.18);
+    color: var(--tmc-text);
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .tmc-proposed-input:focus {
+    border-color: var(--tmc-accent);
+    box-shadow: 0 0 0 3px rgba(105, 199, 180, 0.11);
+  }
+
+  .tmc-delete {
+    width: 31px;
+    height: 31px;
+    border: 1px solid rgba(211, 101, 112, 0.35);
+    border-radius: 9px;
+    background: rgba(211, 101, 112, 0.1);
+    color: #ffc4ca;
+    font: inherit;
+  }
+
+  .tmc-empty {
+    padding: 16px 10px;
+    color: var(--tmc-muted);
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .tmc-skeleton-row {
+    height: 58px;
+    margin: 8px 0;
+    border-radius: 10px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.035) 20%, rgba(105, 199, 180, 0.12) 45%, rgba(255, 255, 255, 0.035) 70%);
+    background-size: 220% 100%;
+    animation: tmc-shimmer 1.25s ease-in-out infinite;
+  }
+
+  @keyframes tmc-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes tmc-shimmer {
+    from { background-position: 100% 0; }
+    to { background-position: -100% 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #tmc-root.tmc-working .tmc-launcher-ring,
+    #tmc-root.tmc-working .tmc-inline-spinner,
+    .tmc-skeleton-row {
+      animation-duration: 2.4s;
+    }
+  }
+
+  .tmc-add-button {
+    width: calc(100% - 20px);
+    margin: 0 10px 10px;
+    border-style: dashed;
+    color: #9be2d4;
+  }
+
+  .tmc-changes {
+    margin: 0;
+    padding: 12px 14px 12px 30px;
+    color: #d8d6dd;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .tmc-raw-output {
+    max-height: 260px;
+    margin: 0;
+    padding: 12px;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    background: rgba(0, 0, 0, 0.22);
+    color: #d8d6dd;
+    font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  .tmc-launcher-setting {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 14px 0 2px;
+    padding: 10px 11px;
+    border: 1px solid var(--tmc-border);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.025);
+    color: var(--tmc-muted);
+    font-size: 10px;
+    line-height: 1.35;
+  }
+
+  .tmc-launcher-setting button {
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding: 7px 9px;
+    border: 1px solid var(--tmc-border);
+    border-radius: 9px;
+    background: var(--tmc-surface-2);
+    color: var(--tmc-text);
+    font: inherit;
+    font-size: 10px;
+    font-weight: 750;
+  }
+
+  @media (min-width: 760px) {
+    #tmc-launcher {
+      width: 40px;
+      height: 40px;
+    }
+
+    #tmc-sheet {
+      align-items: center;
+      padding: 24px;
+    }
+
+    .tmc-panel {
+      max-height: min(880px, 92vh);
+      border-bottom: 1px solid var(--tmc-border);
+      border-radius: 24px;
+    }
+  }
+</style>
+
+<script>
+(() => {
+  const root = document.getElementById('tmc-root');
+  if (!root || root.dataset.ready === 'true') return;
+  root.dataset.ready = 'true';
+
+  const BACKUP_KEY = 'tavoMemoryCuratorBackup';
+  const LAUNCHER_POSITION_KEY = 'tavoMemoryCuratorLauncherPosition';
+  const DEFAULT_LAUNCHER_POSITION = { side: 'right', yRatio: 0.72 };
+  const sheet = document.getElementById('tmc-sheet');
+  const launcher = document.getElementById('tmc-launcher');
+  const status = document.getElementById('tmc-status');
+  const currentList = document.getElementById('tmc-current-list');
+  const proposedList = document.getElementById('tmc-proposed-list');
+  const changesSection = document.getElementById('tmc-changes-section');
+  const changesList = document.getElementById('tmc-changes');
+  const rawSection = document.getElementById('tmc-raw-section');
+  const rawOutput = document.getElementById('tmc-raw-output');
+  const applyButton = document.getElementById('tmc-apply');
+  const aiButton = document.getElementById('tmc-ai-clean');
+  const aiLabel = document.getElementById('tmc-ai-label');
+  const safeButton = document.getElementById('tmc-safe-clean');
+  const reloadButton = document.getElementById('tmc-reload');
+  const restoreButton = document.getElementById('tmc-restore');
+  const addButton = document.getElementById('tmc-add');
+  const proposalSourceElement = document.getElementById('tmc-proposal-source');
+
+  let currentMemory = null;
+  let originalMemories = [];
+  let proposedMemories = [];
+  let proposalChanges = [];
+  let proposalSource = null;
+  let isAiWorking = false;
+  let statusTimer = null;
+  let launcherPosition = { ...DEFAULT_LAUNCHER_POSITION };
+  let launcherDrag = null;
+
+  function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function viewportBounds() {
+    const viewport = window.visualViewport;
+    return {
+      left: viewport ? viewport.offsetLeft : 0,
+      top: viewport ? viewport.offsetTop : 0,
+      width: viewport ? viewport.width : window.innerWidth,
+      height: viewport ? viewport.height : window.innerHeight
+    };
+  }
+
+  function launcherMetrics() {
+    const bounds = viewportBounds();
+    const width = launcher.offsetWidth || 32;
+    const height = launcher.offsetHeight || 32;
+    const edgeGap = 10;
+    const verticalGap = 12;
+    const minLeft = bounds.left + edgeGap;
+    const maxLeft = Math.max(minLeft, bounds.left + bounds.width - width - edgeGap);
+    const minTop = bounds.top + verticalGap;
+    const maxTop = Math.max(minTop, bounds.top + bounds.height - height - verticalGap);
+    return { bounds, width, height, minLeft, maxLeft, minTop, maxTop };
+  }
+
+  function applyLauncherPosition() {
+    const metrics = launcherMetrics();
+    const savedRatio = Number(launcherPosition.yRatio);
+    const ratio = clamp(Number.isFinite(savedRatio) ? savedRatio : DEFAULT_LAUNCHER_POSITION.yRatio, 0, 1);
+    const top = metrics.minTop + ratio * (metrics.maxTop - metrics.minTop);
+    const left = launcherPosition.side === 'left' ? metrics.minLeft : metrics.maxLeft;
+    launcher.style.left = `${Math.round(left)}px`;
+    launcher.style.top = `${Math.round(top)}px`;
+    launcher.style.right = 'auto';
+    launcher.style.bottom = 'auto';
+  }
+
+  async function loadLauncherPosition() {
+    try {
+      const saved = await tavo.get(LAUNCHER_POSITION_KEY, 'global');
+      if (saved && (saved.side === 'left' || saved.side === 'right') && Number.isFinite(Number(saved.yRatio))) {
+        launcherPosition = {
+          side: saved.side,
+          yRatio: clamp(Number(saved.yRatio), 0, 1)
+        };
+      }
+    } catch {
+      launcherPosition = { ...DEFAULT_LAUNCHER_POSITION };
+    }
+    applyLauncherPosition();
+  }
+
+  async function saveLauncherPosition() {
+    try {
+      await tavo.set(LAUNCHER_POSITION_KEY, launcherPosition, 'global');
+    } catch {
+      // Position still remains active for the current page session.
+    }
+  }
+
+  function finishLauncherDrag(event, cancelled = false) {
+    if (!launcherDrag || event.pointerId !== launcherDrag.pointerId) return;
+    const wasDragging = launcherDrag.dragging;
+    try { launcher.releasePointerCapture(event.pointerId); } catch {}
+
+    if (cancelled) {
+      launcher.classList.remove('tmc-dragging');
+      launcherDrag = null;
+      applyLauncherPosition();
+      return;
+    }
+
+    if (wasDragging) {
+      const metrics = launcherMetrics();
+      const currentLeft = parseFloat(launcher.style.left) || metrics.minLeft;
+      const currentTop = clamp(parseFloat(launcher.style.top) || metrics.minTop, metrics.minTop, metrics.maxTop);
+      const center = currentLeft + metrics.width / 2;
+      launcherPosition.side = center < metrics.bounds.left + metrics.bounds.width / 2 ? 'left' : 'right';
+      launcherPosition.yRatio = metrics.maxTop === metrics.minTop
+        ? 0
+        : clamp((currentTop - metrics.minTop) / (metrics.maxTop - metrics.minTop), 0, 1);
+      launcher.classList.remove('tmc-dragging');
+      launcherDrag = null;
+      applyLauncherPosition();
+      saveLauncherPosition();
+      tavo.utils.toast('Launcher position saved');
+      return;
+    }
+
+    launcher.classList.remove('tmc-dragging');
+    launcherDrag = null;
+    openPanel();
+  }
+
+  function setupLauncherGestures() {
+    launcher.addEventListener('pointerdown', (event) => {
+      if (event.button !== undefined && event.button !== 0) return;
+      const rect = launcher.getBoundingClientRect();
+      launcherDrag = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        offsetX: event.clientX - rect.left,
+        offsetY: event.clientY - rect.top,
+        dragging: false
+      };
+      launcher.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+
+    launcher.addEventListener('pointermove', (event) => {
+      if (!launcherDrag || event.pointerId !== launcherDrag.pointerId) return;
+      const distance = Math.hypot(event.clientX - launcherDrag.startX, event.clientY - launcherDrag.startY);
+      if (!launcherDrag.dragging && distance < 6) return;
+      launcherDrag.dragging = true;
+      launcher.classList.add('tmc-dragging');
+      const metrics = launcherMetrics();
+      const left = clamp(event.clientX - launcherDrag.offsetX, metrics.minLeft, metrics.maxLeft);
+      const top = clamp(event.clientY - launcherDrag.offsetY, metrics.minTop, metrics.maxTop);
+      launcher.style.left = `${Math.round(left)}px`;
+      launcher.style.top = `${Math.round(top)}px`;
+      event.preventDefault();
+    });
+
+    launcher.addEventListener('pointerup', (event) => finishLauncherDrag(event));
+    launcher.addEventListener('pointercancel', (event) => finishLauncherDrag(event, true));
+  }
+
+  async function resetLauncherPosition() {
+    launcherPosition = { ...DEFAULT_LAUNCHER_POSITION };
+    applyLauncherPosition();
+    await saveLauncherPosition();
+    tavo.utils.toast('Launcher position reset');
+  }
+
+  function setStatus(message) {
+    status.textContent = message;
+  }
+
+  function setProposalSource(source) {
+    proposalSource = source;
+    proposalSourceElement.textContent = source ? `Proposal source: ${source}` : '';
+    proposalSourceElement.classList.toggle('tmc-hidden', !source);
+  }
+
+  function clearRawResponse() {
+    rawOutput.textContent = '';
+    rawOutput.classList.add('tmc-hidden');
+    rawSection.classList.add('tmc-hidden');
+    document.getElementById('tmc-raw-toggle').setAttribute('aria-expanded', 'false');
+  }
+
+  function showRawResponse(text) {
+    const raw = String(text || '').trim();
+    if (!raw) {
+      clearRawResponse();
+      return;
+    }
+    rawOutput.textContent = raw.slice(0, 12000);
+    rawOutput.classList.add('tmc-hidden');
+    rawSection.classList.remove('tmc-hidden');
+    document.getElementById('tmc-raw-toggle').setAttribute('aria-expanded', 'false');
+  }
+
+  function startWorkingMessages() {
+    const messages = [
+      `Reading ${originalMemories.length} memories…`,
+      'Comparing overlap and contradictions…',
+      'Preparing a reviewable proposal…'
+    ];
+    let index = 0;
+    setStatus(messages[index]);
+    statusTimer = window.setInterval(() => {
+      index = (index + 1) % messages.length;
+      setStatus(messages[index]);
+    }, 2400);
+  }
+
+  function stopWorkingMessages() {
+    if (statusTimer !== null) {
+      window.clearInterval(statusTimer);
+      statusTimer = null;
+    }
+  }
+
+  function setAiWorking(working) {
+    isAiWorking = working;
+    root.classList.toggle('tmc-working', working);
+    aiButton.disabled = working;
+    safeButton.disabled = working;
+    reloadButton.disabled = working;
+    addButton.disabled = working;
+    aiLabel.textContent = working ? 'Analyzing…' : 'Analyze with AI';
+    if (working) {
+      applyButton.disabled = true;
+      startWorkingMessages();
+    } else {
+      stopWorkingMessages();
+      updateCounts();
+    }
+  }
+
+  function renderLoadingProposal() {
+    proposedList.replaceChildren();
+    for (let i = 0; i < 3; i += 1) {
+      const row = document.createElement('div');
+      row.className = 'tmc-skeleton-row';
+      row.setAttribute('aria-hidden', 'true');
+      proposedList.appendChild(row);
+    }
+  }
+
+  async function updateBackupAvailability() {
+    try {
+      const backup = await tavo.get(BACKUP_KEY, 'chat');
+      const available = Boolean(backup && backup.memory && Array.isArray(backup.memory.memories));
+      restoreButton.disabled = !available;
+      restoreButton.textContent = available ? 'Restore Last Backup' : 'No backup yet';
+    } catch {
+      restoreButton.disabled = true;
+      restoreButton.textContent = 'No backup yet';
+    }
+  }
+
+  function normalizeMemory(value) {
+    return String(value || '').replace(/\r\n/g, '\n').trim();
+  }
+
+  function memoryContent(value) {
+    return normalizeMemory(value).replace(/^\s*(?:[-*•–—]|\d+[.)])\s*/, '').trim();
+  }
+
+  function formatMemoryItem(value) {
+    const text = memoryContent(value)
+      .replace(/\s*\n+\s*/g, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+    return text ? `- ${text}` : '';
+  }
+
+  const CATEGORY_ALIASES = {
+    CORE: 'CORE',
+    CONTINUITY: 'CORE',
+    CURRENT: 'CURRENT',
+    STATE: 'CURRENT',
+    RELATIONSHIP: 'CURRENT',
+    NPC: 'CURRENT',
+    OBJECT: 'CURRENT',
+    HISTORY: 'HISTORY',
+    EVENT: 'HISTORY',
+    OPEN: 'OPEN',
+    OBJECTIVE: 'OPEN',
+    THREAT: 'OPEN'
+  };
+
+  function formatCategorizedMemoryItem(value) {
+    const text = memoryContent(value)
+      .replace(/\s*\n+\s*/g, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+    if (!text) return '';
+
+    const match = text.match(/^\[([^\]]+)\]\s*(.*)$/);
+    if (!match) return `- [CURRENT] ${text}`;
+
+    const category = CATEGORY_ALIASES[match[1].trim().toUpperCase()] || 'CURRENT';
+    const content = match[2].trim();
+    return content ? `- [${category}] ${content}` : '';
+  }
+
+  function isHeadingOnly(value) {
+    const text = normalizeMemory(value);
+    return /^\*\*[^*\n]{1,100}:?\*\*$/.test(text) || /^#{1,6}\s+[^\n]{1,100}$/.test(text);
+  }
+
+  function safeCleanup(memories) {
+    const seen = new Set();
+    const cleaned = [];
+    const changes = [];
+
+    for (const raw of memories) {
+      const memory = normalizeMemory(raw);
+      if (!memory) {
+        changes.push('Removed an empty memory item.');
+        continue;
+      }
+
+      const key = memoryContent(memory).toLocaleLowerCase();
+      if (seen.has(key)) {
+        changes.push(`Removed exact duplicate: ${memory.slice(0, 90)}`);
+        continue;
+      }
+
+      if (isHeadingOnly(memory)) {
+        changes.push(`Removed formatting-only heading: ${memory}`);
+        continue;
+      }
+
+      seen.add(key);
+      cleaned.push(formatMemoryItem(memory));
+    }
+
+    return { memories: cleaned, changes };
+  }
+
+  function updateCounts() {
+    document.getElementById('tmc-current-count').textContent = String(originalMemories.length);
+    if (isAiWorking) {
+      document.getElementById('tmc-proposed-count').textContent = '…';
+      document.getElementById('tmc-removed-count').textContent = '…';
+    } else if (!proposalSource) {
+      document.getElementById('tmc-proposed-count').textContent = '—';
+      document.getElementById('tmc-removed-count').textContent = '—';
+    } else {
+      document.getElementById('tmc-proposed-count').textContent = String(proposedMemories.length);
+      const difference = proposedMemories.length - originalMemories.length;
+      document.getElementById('tmc-removed-count').textContent = difference > 0 ? `+${difference}` : String(difference);
+    }
+    applyButton.disabled = isAiWorking || !currentMemory || !proposalSource || proposedMemories.length === 0;
+  }
+
+  function makeNumber(index) {
+    const number = document.createElement('div');
+    number.className = 'tmc-number';
+    number.textContent = String(index + 1);
+    return number;
+  }
+
+  function renderCurrent() {
+    currentList.replaceChildren();
+    if (!originalMemories.length) {
+      const empty = document.createElement('div');
+      empty.className = 'tmc-empty';
+      empty.textContent = 'No memories are currently stored for this chat.';
+      currentList.appendChild(empty);
+      return;
+    }
+
+    originalMemories.forEach((memory, index) => {
+      const card = document.createElement('div');
+      card.className = 'tmc-memory-card';
+      const text = document.createElement('p');
+      text.className = 'tmc-memory-text';
+      text.textContent = memory;
+      card.append(makeNumber(index), text);
+      currentList.appendChild(card);
+    });
+  }
+
+  function syncProposedFromInputs() {
+    proposedMemories = Array.from(proposedList.querySelectorAll('.tmc-proposed-input'))
+      .map((input) => formatMemoryItem(input.value))
+      .filter(Boolean);
+    updateCounts();
+  }
+
+  function renderProposed() {
+    proposedList.replaceChildren();
+    if (!proposedMemories.length) {
+      const empty = document.createElement('div');
+      empty.className = 'tmc-empty';
+      empty.textContent = 'Run Basic Cleanup or Analyze with AI to create a proposal.';
+      proposedList.appendChild(empty);
+      updateCounts();
+      return;
+    }
+
+    proposedMemories.forEach((memory, index) => {
+      const card = document.createElement('div');
+      card.className = 'tmc-memory-card';
+      const input = document.createElement('textarea');
+      input.className = 'tmc-proposed-input';
+      input.value = memory;
+      input.setAttribute('aria-label', `Proposed memory ${index + 1}`);
+      input.addEventListener('input', syncProposedFromInputs);
+
+      const remove = document.createElement('button');
+      remove.className = 'tmc-delete';
+      remove.type = 'button';
+      remove.textContent = '−';
+      remove.setAttribute('aria-label', `Remove proposed memory ${index + 1}`);
+      remove.addEventListener('click', () => {
+        syncProposedFromInputs();
+        proposedMemories.splice(index, 1);
+        renderProposed();
+      });
+
+      card.append(makeNumber(index), input, remove);
+      proposedList.appendChild(card);
+    });
+    updateCounts();
+  }
+
+  function renderChanges() {
+    changesList.replaceChildren();
+    changesSection.classList.toggle('tmc-hidden', proposalChanges.length === 0);
+    for (const change of proposalChanges) {
+      const item = document.createElement('li');
+      item.textContent = change;
+      changesList.appendChild(item);
+    }
+  }
+
+  async function loadMemories() {
+    try {
+      setStatus('Loading this chat\'s Tavo Memories…');
+      currentMemory = await tavo.memory.current();
+      originalMemories = Array.isArray(currentMemory && currentMemory.memories)
+        ? currentMemory.memories.map(normalizeMemory).filter(Boolean)
+        : [];
+      proposedMemories = [];
+      proposalChanges = [];
+      setProposalSource(null);
+      clearRawResponse();
+      renderCurrent();
+      renderProposed();
+      renderChanges();
+      await updateBackupAvailability();
+      const enabledText = currentMemory && currentMemory.enabled ? 'enabled' : 'disabled';
+      setStatus(`Loaded ${originalMemories.length} memories. Long-term memory is ${enabledText}.`);
+    } catch (error) {
+      setStatus(`Could not load Tavo Memories: ${error.message}`);
+      tavo.utils.toast('Memory Curator could not load memories');
+    }
+  }
+
+  function proposeSafeCleanup() {
+    if (!currentMemory) {
+      setStatus('Load memories before creating a proposal.');
+      return;
+    }
+    const result = safeCleanup(originalMemories);
+    clearRawResponse();
+    proposedMemories = result.memories;
+    proposalChanges = result.changes;
+    setProposalSource('Basic cleanup');
+    renderProposed();
+    renderChanges();
+    setStatus(result.changes.length
+      ? `Safe proposal prepared with ${result.changes.length} cleanup action(s). Review it below.`
+      : 'No exact duplicates or obvious formatting-only headings were found.');
+  }
+
+  function categorizedLines(text) {
+    const allowed = 'CORE|CURRENT|HISTORY|OPEN|STATE|EVENT|RELATIONSHIP|NPC|OBJECT|OBJECTIVE|THREAT|CONTINUITY';
+    const pattern = new RegExp(`^\\s*(?:[-*•–—]|\\d+[.)])\\s*\\[(${allowed})\\]\\s*.+$`, 'i');
+    return String(text || '')
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => pattern.test(line));
+  }
+
+  function changeLines(text) {
+    return String(text || '')
+      .split(/\r?\n/)
+      .map((line) => line.replace(/^\s*(?:[-*•–—]|\d+[.)])\s*/, '').trim())
+      .filter(Boolean);
+  }
+
+  function parseCleanupResponse(text) {
+    let cleaned = String(text || '').trim();
+    cleaned = cleaned.replace(/^```(?:json|text|markdown)?\s*/i, '').replace(/\s*```$/, '');
+
+    const jsonStart = cleaned.indexOf('{');
+    const jsonEnd = cleaned.lastIndexOf('}');
+    if (jsonStart !== -1 && jsonEnd > jsonStart) {
+      try {
+        const json = JSON.parse(cleaned.slice(jsonStart, jsonEnd + 1));
+        if (Array.isArray(json.memories) && json.memories.length) {
+          return {
+            memories: json.memories,
+            changes: Array.isArray(json.changes) ? json.changes : []
+          };
+        }
+      } catch {
+        // Continue to the more tolerant tagged-text parser.
+      }
+    }
+
+    const memoryBlock = cleaned.match(/<MEMORIES>\s*([\s\S]*?)(?:<\/MEMORIES>|<CHANGES>|$)/i);
+    const changesBlock = cleaned.match(/<CHANGES>\s*([\s\S]*?)(?:<\/CHANGES>|$)/i);
+    const memories = categorizedLines(memoryBlock ? memoryBlock[1] : cleaned);
+    const changes = changesBlock ? changeLines(changesBlock[1]) : [];
+
+    if (!memories.length) {
+      throw new Error('The model returned text, but no categorized memory lines could be identified');
+    }
+
+    return { memories, changes };
+  }
+
+  async function proposeAiCleanup() {
+    if (!currentMemory || !originalMemories.length) {
+      setStatus('There are no loaded memories to analyze.');
+      return;
+    }
+
+    proposedMemories = [];
+    proposalChanges = [];
+    setProposalSource(null);
+    clearRawResponse();
+    renderChanges();
+    setAiWorking(true);
+    renderLoadingProposal();
+    updateCounts();
+    let rawText = '';
+    try {
+      const payload = JSON.stringify(originalMemories);
+      const prompt = [
+        'Conservatively curate the supplied long-term memories for an AI role-playing chat.',
+        'Return only this plain-text structure:',
+        '<MEMORIES>',
+        '- [CATEGORY] Memory text',
+        '</MEMORIES>',
+        '<CHANGES>',
+        '- Brief material change',
+        '</CHANGES>',
+        '',
+        'Categories:',
+        '- CORE: stable character, ability, equipment, or campaign facts',
+        '- CURRENT: present location, condition, possessions, relationships, or NPC status',
+        '- HISTORY: completed events with continuing importance',
+        '- OPEN: unresolved goals, threats, promises, plans, or mysteries',
+        '',
+        'Rules:',
+        '- Use source facts only; never add, infer, or speculate.',
+        '- Write each memory as one concise, self-contained "- [CATEGORY]" line with explicit names.',
+        '- Preserve numbers, ownership, deaths, injuries, negations, corrections, and uncertainty.',
+        '- Merge true overlap; store each fact once while keeping distinct facts and events.',
+        '- CURRENT uses the latest established state. HISTORY includes only consequential completed events. OPEN includes only unresolved matters.',
+        '- Remove empty headings and information explicitly superseded or resolved by the source.',
+        '- Prefer CORE, CURRENT, HISTORY, OPEN order; accuracy matters more than sorting.',
+        '- In CHANGES, list at most five material merges, removals, or corrections; write "- No material changes" if none.',
+        '- No JSON, code fences, standalone headings, separators, commentary, or text outside the marked sections.',
+        '',
+        'SOURCE MEMORIES:',
+        payload
+      ].join('\n');
+
+      rawText = await tavo.generate(prompt, {
+        context: false,
+        settings: {
+          temperature: 0.1,
+          maxCompletionTokens: 2400
+        }
+      });
+      const result = parseCleanupResponse(rawText);
+      if (!Array.isArray(result.memories) || !result.memories.length) {
+        throw new Error('The proposal did not contain a non-empty memories array');
+      }
+
+      proposedMemories = result.memories.map(formatCategorizedMemoryItem).filter(Boolean).slice(0, 250);
+      proposalChanges = Array.isArray(result.changes)
+        ? result.changes.map(normalizeMemory).filter(Boolean).slice(0, 100)
+        : ['The model did not provide a change explanation. Review every proposed memory carefully.'];
+      setAiWorking(false);
+      setProposalSource('AI analysis');
+      clearRawResponse();
+      renderProposed();
+      renderChanges();
+      setStatus('AI proposal ready. Compare it with the current list and edit anything necessary before approval.');
+      tavo.utils.toast('AI memory proposal ready');
+    } catch (error) {
+      setAiWorking(false);
+      setProposalSource(null);
+      proposedMemories = [];
+      renderProposed();
+      showRawResponse(typeof rawText === 'string' ? rawText : '');
+      setStatus(`AI cleanup failed: ${error.message}`);
+      tavo.utils.toast('AI cleanup failed — see details');
+    }
+  }
+
+  async function applyProposal() {
+    syncProposedFromInputs();
+    if (!currentMemory || !proposedMemories.length) {
+      setStatus('There is no valid proposal to apply.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Replace ${originalMemories.length} current memories with ${proposedMemories.length} reviewed memories?\n\nA backup of the current list will be saved first.`
+    );
+    if (!confirmed) return;
+
+    try {
+      applyButton.disabled = true;
+      setStatus('Saving backup and updating Tavo Memories…');
+      const latest = await tavo.memory.current();
+      await tavo.set(BACKUP_KEY, {
+        createdAt: new Date().toISOString(),
+        memory: JSON.parse(JSON.stringify(latest))
+      }, 'chat');
+
+      latest.memories = proposedMemories.map(formatMemoryItem).filter(Boolean);
+      await tavo.memory.update(latest);
+      tavo.utils.toast('Tavo Memories updated');
+      await loadMemories();
+      setStatus(`Update complete. A backup of the previous list is available through Restore Last Backup.`);
+    } catch (error) {
+      setStatus(`Could not update memories: ${error.message}`);
+      tavo.utils.toast('Memory update failed');
+      applyButton.disabled = false;
+    }
+  }
+
+  async function restoreBackup() {
+    try {
+      const backup = await tavo.get(BACKUP_KEY, 'chat');
+      if (!backup || !backup.memory || !Array.isArray(backup.memory.memories)) {
+        setStatus('No Memory Curator backup exists for this chat.');
+        return;
+      }
+
+      const confirmed = window.confirm(
+        `Restore the backup from ${backup.createdAt || 'an earlier update'} containing ${backup.memory.memories.length} memories?`
+      );
+      if (!confirmed) return;
+
+      const latest = await tavo.memory.current();
+      latest.enabled = backup.memory.enabled;
+      latest.memories = [...backup.memory.memories];
+      await tavo.memory.update(latest);
+      tavo.utils.toast('Memory backup restored');
+      await loadMemories();
+      setStatus('The last Memory Curator backup was restored.');
+    } catch (error) {
+      setStatus(`Could not restore the backup: ${error.message}`);
+      tavo.utils.toast('Backup restore failed');
+    }
+  }
+
+  function addProposedMemory() {
+    syncProposedFromInputs();
+    proposedMemories.push('- [CURRENT] ');
+    renderProposed();
+    const inputs = proposedList.querySelectorAll('.tmc-proposed-input');
+    const last = inputs[inputs.length - 1];
+    if (last) last.focus();
+  }
+
+  function toggleSection(button, target) {
+    const expanded = button.getAttribute('aria-expanded') === 'true';
+    button.setAttribute('aria-expanded', String(!expanded));
+    target.classList.toggle('tmc-hidden', expanded);
+  }
+
+  function openPanel() {
+    sheet.classList.remove('tmc-hidden');
+    if (!isAiWorking) loadMemories();
+  }
+
+  function closePanel() {
+    sheet.classList.add('tmc-hidden');
+  }
+
+  setupLauncherGestures();
+  loadLauncherPosition();
+  window.addEventListener('resize', applyLauncherPosition);
+  window.addEventListener('orientationchange', applyLauncherPosition);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', applyLauncherPosition);
+    window.visualViewport.addEventListener('scroll', applyLauncherPosition);
+  }
+  document.getElementById('tmc-close').addEventListener('click', closePanel);
+  root.querySelector('[data-tmc-close]').addEventListener('click', closePanel);
+  document.getElementById('tmc-reload').addEventListener('click', loadMemories);
+  document.getElementById('tmc-safe-clean').addEventListener('click', proposeSafeCleanup);
+  aiButton.addEventListener('click', proposeAiCleanup);
+  applyButton.addEventListener('click', applyProposal);
+  document.getElementById('tmc-restore').addEventListener('click', restoreBackup);
+  document.getElementById('tmc-add').addEventListener('click', addProposedMemory);
+  document.getElementById('tmc-current-toggle').addEventListener('click', (event) => {
+    toggleSection(event.currentTarget, currentList);
+  });
+  document.getElementById('tmc-proposed-toggle').addEventListener('click', (event) => {
+    toggleSection(event.currentTarget, proposedList);
+  });
+  document.getElementById('tmc-raw-toggle').addEventListener('click', (event) => {
+    toggleSection(event.currentTarget, rawOutput);
+  });
+  document.getElementById('tmc-reset-launcher').addEventListener('click', resetLauncherPosition);
+})();
+</script>
