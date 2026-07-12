@@ -1,0 +1,3 @@
+376bffd6377b9a7c6e39b03b82bae6c2cdc5bd8aced84832e80e1124f96a341f  tavo-memory-curator-0.5.1.tpg
+28881cfe0d4adb8efa4b310a24f66b5ca239bc61f4664c56b6d5f41339b7f6fe  tavo-memory-curator-0.5.1-source.zip
+8786a9550b83c65c23bcb45a8c5691011d156bfc43aa4677e77e112c36a03f1f  TAVO_MEMORY_CURATOR_SUMMARY_PROMPT.md
