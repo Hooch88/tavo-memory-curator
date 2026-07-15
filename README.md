@@ -10,7 +10,6 @@ Current beta release: **v0.6.0-beta**
 
 - [Installable Tavo plugin (`.tpg`)](https://github.com/Hooch88/tavo-memory-curator/raw/refs/heads/main/downloads/tavo-memory-curator-0.6.0.tpg)
 - [Recommended companion summary prompt](TAVO_MEMORY_CURATOR_SUMMARY_PROMPT.md)
-- [Recommended companion summary prompt](TAVO_MEMORY_CURATOR_SUMMARY_PROMPT.md)
 
 ## Why use it?
 
