@@ -70,6 +70,10 @@
           <button id="tmc-raw-toggle" class="tmc-section-toggle" type="button" aria-expanded="false">
             <span>View Raw AI Response</span><span aria-hidden="true">&#9662;</span>
           </button>
+          <div id="tmc-raw-details" class="tmc-raw-details tmc-hidden">
+            <span id="tmc-raw-meta"></span>
+            <button id="tmc-copy-raw" type="button">Copy Raw Response</button>
+          </div>
           <pre id="tmc-raw-output" class="tmc-raw-output tmc-hidden"></pre>
         </section>
 
@@ -104,7 +108,7 @@
     --tmc-accent-dark: #317e70;
     --tmc-danger: #d36570;
     color: var(--tmc-text);
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: inherit;
   }
 
   #tmc-launcher {
@@ -573,6 +577,30 @@
     font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
 
+  .tmc-raw-details {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--tmc-border);
+    color: var(--tmc-muted);
+    font-size: 10px;
+    line-height: 1.35;
+  }
+
+  .tmc-raw-details button {
+    flex: 0 0 auto;
+    min-height: 32px;
+    padding: 6px 9px;
+    border: 1px solid var(--tmc-border);
+    border-radius: 9px;
+    background: var(--tmc-surface-2);
+    color: var(--tmc-text);
+    font: inherit;
+    font-weight: 750;
+  }
+
   .tmc-launcher-setting {
     display: flex;
     align-items: center;
@@ -638,6 +666,9 @@
   const changesList = document.getElementById('tmc-changes');
   const rawSection = document.getElementById('tmc-raw-section');
   const rawOutput = document.getElementById('tmc-raw-output');
+  const rawDetails = document.getElementById('tmc-raw-details');
+  const rawMeta = document.getElementById('tmc-raw-meta');
+  const copyRawButton = document.getElementById('tmc-copy-raw');
   const applyButton = document.getElementById('tmc-apply');
   const aiButton = document.getElementById('tmc-ai-clean');
   const aiLabel = document.getElementById('tmc-ai-label');
@@ -656,6 +687,7 @@
   let statusTimer = null;
   let launcherPosition = { ...DEFAULT_LAUNCHER_POSITION };
   let launcherDrag = null;
+  let lastRawResponse = '';
 
   function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
@@ -805,22 +837,68 @@
   }
 
   function clearRawResponse() {
+    lastRawResponse = '';
     rawOutput.textContent = '';
+    rawMeta.textContent = '';
+    rawDetails.classList.add('tmc-hidden');
     rawOutput.classList.add('tmc-hidden');
     rawSection.classList.add('tmc-hidden');
     document.getElementById('tmc-raw-toggle').setAttribute('aria-expanded', 'false');
+  }
+
+  function rawResponseDiagnostics(text) {
+    const raw = String(text || '').trim();
+    if (!raw) return 'The provider returned no response text.';
+    const hasMemoryTag = /<MEMORIES>/i.test(raw);
+    const hasCategory = /\b(?:CORE|CURRENT|HISTORY|OPEN|STATE|EVENT|RELATIONSHIP|NPC|OBJECT|OBJECTIVE|THREAT|CONTINUITY)\b/i.test(raw);
+    return `${raw.length.toLocaleString()} characters · memory tag ${hasMemoryTag ? 'found' : 'missing'} · category labels ${hasCategory ? 'found' : 'missing'}`;
   }
 
   function showRawResponse(text) {
     const raw = String(text || '').trim();
     if (!raw) {
       clearRawResponse();
-      return;
+      return rawResponseDiagnostics(raw);
     }
-    rawOutput.textContent = raw.slice(0, 12000);
+    lastRawResponse = raw;
+    const previewLimit = 12000;
+    rawOutput.textContent = raw.length > previewLimit
+      ? `${raw.slice(0, previewLimit)}\n\n[Preview ends here. Copy Raw Response includes all ${raw.length.toLocaleString()} characters.]`
+      : raw;
+    rawMeta.textContent = rawResponseDiagnostics(raw);
+    rawDetails.classList.add('tmc-hidden');
     rawOutput.classList.add('tmc-hidden');
     rawSection.classList.remove('tmc-hidden');
     document.getElementById('tmc-raw-toggle').setAttribute('aria-expanded', 'false');
+    return rawMeta.textContent;
+  }
+
+  async function copyRawResponse() {
+    if (!lastRawResponse) {
+      tavo.utils.toast('No raw AI response to copy');
+      return;
+    }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(lastRawResponse);
+      } else {
+        const field = document.createElement('textarea');
+        field.value = lastRawResponse;
+        field.setAttribute('readonly', '');
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        document.body.appendChild(field);
+        try {
+          field.select();
+          if (!document.execCommand('copy')) throw new Error('Clipboard unavailable');
+        } finally {
+          field.remove();
+        }
+      }
+      tavo.utils.toast('Raw AI response copied');
+    } catch {
+      tavo.utils.toast('Could not copy the raw response');
+    }
   }
 
   function startWorkingMessages() {
@@ -1104,11 +1182,34 @@
 
   function categorizedLines(text) {
     const allowed = 'CORE|CURRENT|HISTORY|OPEN|STATE|EVENT|RELATIONSHIP|NPC|OBJECT|OBJECTIVE|THREAT|CONTINUITY';
-    const pattern = new RegExp(`^\\s*(?:[-*•–—]|\\d+[.)])\\s*\\[(${allowed})\\]\\s*.+$`, 'i');
-    return String(text || '')
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => pattern.test(line));
+    const headingPattern = new RegExp(`^(?:#{1,6}\\s*)?(?:\\*\\*)?\\[?(${allowed})\\]?\\s*:?(?:\\*\\*)?\\s*$`, 'i');
+    const labeledPattern = new RegExp(`^(?:\\*\\*)?\\[?(${allowed})\\]?(?:\\*\\*)?\\s*(?::|[-–—])?\\s+(.+)$`, 'i');
+    const listPattern = /^\s*(?:[-*•–—]|\d+[.)])\s+(.+)$/;
+    const memories = [];
+    let activeCategory = null;
+
+    for (const sourceLine of String(text || '').split(/\r?\n/)) {
+      const line = sourceLine.trim();
+      if (!line) continue;
+      const listMatch = line.match(listPattern);
+      const content = listMatch ? listMatch[1].trim() : line;
+      const headingMatch = content.match(headingPattern);
+      if (headingMatch) {
+        activeCategory = CATEGORY_ALIASES[headingMatch[1].toUpperCase()] || 'CURRENT';
+        continue;
+      }
+      const labeledMatch = content.match(labeledPattern);
+      if (labeledMatch) {
+        const category = CATEGORY_ALIASES[labeledMatch[1].toUpperCase()] || 'CURRENT';
+        const memory = labeledMatch[2].replace(/^\*\*|\*\*$/g, '').trim();
+        if (memory) memories.push(`- [${category}] ${memory}`);
+        continue;
+      }
+      if (listMatch && activeCategory) {
+        memories.push(`- [${activeCategory}] ${content}`);
+      }
+    }
+    return memories;
   }
 
   function changeLines(text) {
@@ -1193,6 +1294,7 @@
         '- Prefer CORE, CURRENT, HISTORY, OPEN order; accuracy matters more than sorting.',
         '- In CHANGES, list at most five material merges, removals, or corrections; write "- No material changes" if none.',
         '- No JSON, code fences, standalone headings, separators, commentary, or text outside the marked sections.',
+        '- Begin immediately with <MEMORIES>. Do not expose reasoning or analysis.',
         '',
         'SOURCE MEMORIES:',
         payload
@@ -1202,7 +1304,7 @@
         context: false,
         settings: {
           temperature: 0.1,
-          maxCompletionTokens: 2400
+          maxCompletionTokens: 8192
         }
       });
       const result = parseCleanupResponse(rawText);
@@ -1210,7 +1312,7 @@
         throw new Error('The proposal did not contain a non-empty memories array');
       }
 
-      proposedMemories = result.memories.map(formatCategorizedMemoryItem).filter(Boolean).slice(0, 250);
+      proposedMemories = result.memories.map(formatCategorizedMemoryItem).filter(Boolean);
       proposalChanges = Array.isArray(result.changes)
         ? result.changes.map(normalizeMemory).filter(Boolean).slice(0, 100)
         : ['The model did not provide a change explanation. Review every proposed memory carefully.'];
@@ -1226,8 +1328,8 @@
       setProposalSource(null);
       proposedMemories = [];
       renderProposed();
-      showRawResponse(typeof rawText === 'string' ? rawText : '');
-      setStatus(`AI cleanup failed: ${error.message}`);
+      const diagnostics = showRawResponse(typeof rawText === 'string' ? rawText : '');
+      setStatus(`AI cleanup failed: ${error.message}. ${diagnostics}`);
       tavo.utils.toast('AI cleanup failed — see details');
     }
   }
@@ -1338,8 +1440,12 @@
     toggleSection(event.currentTarget, proposedList);
   });
   document.getElementById('tmc-raw-toggle').addEventListener('click', (event) => {
-    toggleSection(event.currentTarget, rawOutput);
+    const expanded = event.currentTarget.getAttribute('aria-expanded') === 'true';
+    event.currentTarget.setAttribute('aria-expanded', String(!expanded));
+    rawDetails.classList.toggle('tmc-hidden', expanded);
+    rawOutput.classList.toggle('tmc-hidden', expanded);
   });
+  copyRawButton.addEventListener('click', copyRawResponse);
   document.getElementById('tmc-reset-launcher').addEventListener('click', resetLauncherPosition);
 })();
 </script>

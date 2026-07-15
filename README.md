@@ -4,12 +4,12 @@
 
 Tavo Memory Curator is a plugin for [Tavo](https://tavoai.dev/) that helps review, consolidate, edit, and safely replace a chat's long-term memories. It works directly with Tavo's memory system instead of inserting cleanup prompts into the visible RPG conversation.
 
-Current beta release: **v0.5.1-beta**
+Current beta release: **v0.6.0-beta**
 
 ## Downloads
 
-- [Installable Tavo plugin (`.tpg`)](https://github.com/Hooch88/tavo-memory-curator/raw/refs/heads/main/downloads/tavo-memory-curator-0.5.1.tpg)
-- [Source archive (`.zip`)](https://github.com/Hooch88/tavo-memory-curator/raw/refs/heads/main/downloads/tavo-memory-curator-0.5.1-source.zip)
+- [Installable Tavo plugin (`.tpg`)](https://github.com/Hooch88/tavo-memory-curator/raw/refs/heads/main/downloads/tavo-memory-curator-0.6.0.tpg)
+- [Recommended companion summary prompt](TAVO_MEMORY_CURATOR_SUMMARY_PROMPT.md)
 - [Recommended companion summary prompt](TAVO_MEMORY_CURATOR_SUMMARY_PROMPT.md)
 
 ## Why use it?
@@ -32,8 +32,10 @@ Long-running AI role-playing chats can accumulate duplicated, obsolete, overly v
 - Creates a restorable per-chat backup before replacement
 - Includes a draggable launcher that snaps to either screen edge and remembers its relative position across chats and screen sizes
 - Shows visible progress during AI analysis
-- Accepts tagged text, categorized bullet lists, numbered lines, and legacy JSON model responses
-- Displays the raw AI response if parsing fails
+- Inherits Tavo's selected interface font
+- Accepts tagged text, categorized bullets, numbered lines, category headings, common Markdown label styles, and legacy JSON responses
+- Displays diagnostics and lets you copy the complete raw AI response if parsing fails
+- Never silently truncates a successful proposal to a fixed number of memories
 - Requests no file, network, input-box, or chat-message access
 
 ## Requirements
@@ -46,7 +48,7 @@ Basic Cleanup does not require an AI request.
 
 ## Installation
 
-1. Download [`tavo-memory-curator-0.5.1.tpg`](https://github.com/Hooch88/tavo-memory-curator/raw/refs/heads/main/downloads/tavo-memory-curator-0.5.1.tpg).
+1. Download [`tavo-memory-curator-0.6.0.tpg`](https://github.com/Hooch88/tavo-memory-curator/raw/refs/heads/main/downloads/tavo-memory-curator-0.6.0.tpg).
 2. Save the file on the Android device running Tavo.
 3. In Tavo, open **Settings → Plugins → Install**.
 4. Select the downloaded `.tpg` file.
@@ -107,6 +109,7 @@ Copy the entire file into Tavo's summary-memory prompt setting. The summary prom
 - The static cleanup prompt was reduced by about 41% before this public beta.
 - Memories are serialized compactly without indentation whitespace.
 - Cleanup explanations are limited to five material changes.
+- The request permits up to 8,192 completion tokens so reasoning models have room to return a final answer. This is a ceiling, not a fixed charge; providers normally bill actual usage.
 - The configured model provider's normal token charges still apply.
 
 Basic Cleanup uses no model tokens.
@@ -134,6 +137,9 @@ It does not request `network`, `file`, `input`, or `message` permission. AI clea
 - Confirm the current chat has a working model/API.
 - Retry once in case the provider returned a temporary error.
 - Expand **View Raw AI Response** if the model returned an unsupported format.
+- Use **Copy Raw Response** when reporting a model-specific failure. The diagnostics indicate whether the model returned memory tags or category labels.
+- DeepSeek V4 Flash through the direct DeepSeek API, DeepSeek V4 Pro through NanoGPT, and Gemini Flash have produced successful proposals in beta testing.
+- DeepSeek V4 Pro through the direct DeepSeek API previously failed before producing a parseable final response. Version 0.6.0's larger completion allowance and parser improvements were subsequently confirmed working in a 15-memory device test.
 
 No memories are changed when proposal generation or parsing fails.
 
@@ -145,6 +151,7 @@ No memories are changed when proposal generation or parsing fails.
 ## Beta limitations
 
 - AI cleanup is advisory and may make factual mistakes.
+- Provider and reasoning-model behavior can differ even when the displayed model name is the same.
 - UI placement can vary with Tavo or WebView changes.
 - Only the most recent curator-created backup is retained per chat.
 - The plugin has primarily been tested on Android.

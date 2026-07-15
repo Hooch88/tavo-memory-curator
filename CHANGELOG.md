@@ -4,6 +4,25 @@ All notable changes to Tavo Memory Curator are documented here.
 
 The project is currently in beta and may change before 1.0.0.
 
+## [0.6.0-beta] - 2026-07-15
+
+### Added
+
+- Copy button for the complete raw AI response after a parsing failure
+- Failure diagnostics showing response length and whether memory tags or category labels were detected
+- Parsing support for category headings, unbulleted labels, bold Markdown labels, and categorized section lists
+
+### Changed
+
+- Plugin interface now inherits Tavo's selected font instead of forcing the device system font
+- AI completion allowance increased from 2,400 to 8,192 tokens for reasoning-model compatibility
+- AI prompt now requests the final tagged response immediately without exposed reasoning
+
+### Fixed
+
+- Removed the silent 250-memory proposal truncation limit
+- Raw-response preview truncation no longer affects copying the complete response
+
 ## [0.5.1-beta] - 2026-07-12
 
 ### Added
