@@ -1,0 +1,37 @@
+name: Build Tavo Memory Curator
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run safeguards
+        run: npm test
+      - name: Validate manifest and version parity
+        run: |
+          node -e "const fs=require('fs'); const m=JSON.parse(fs.readFileSync('manifest.json')); const p=require('./package.json'); if(m.version!==p.version) process.exit(1); JSON.parse(fs.readFileSync('locales/en.json'));"
+      - name: Build installable package
+        run: |
+          mkdir -p dist
+          VERSION="$(node -p "require('./package.json').version")"
+          zip -r "dist/tavo-memory-curator-${VERSION}.tpg" manifest.json locales ui README.md LICENSE CHANGELOG.md TAVO_MEMORY_CURATOR_SUMMARY_PROMPT.md
+          sha256sum "dist/tavo-memory-curator-${VERSION}.tpg" > dist/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tavo-memory-curator
+          path: |
+            dist/*.tpg
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
