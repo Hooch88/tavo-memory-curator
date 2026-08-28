@@ -1,0 +1,9 @@
+{
+  "name": "tavo-memory-curator",
+  "version": "0.7.0-beta.1",
+  "private": true,
+  "scripts": {
+    "test": "node tests/memory-curator.test.cjs",
+    "check": "node tests/memory-curator.test.cjs"
+  }
+}

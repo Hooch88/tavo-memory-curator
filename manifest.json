@@ -1,11 +1,21 @@
 {
   "id": "com.jeremy.tavo-memory-curator",
-  "name": "Tavo Memory Curator",
-  "version": "0.6.0",
-  "specVersion": 1,
+  "name": {
+    "$t": "plugin.name"
+  },
+  "version": "0.7.0-beta.1",
+  "specVersion": 2,
   "minAppVersion": "0.91.0",
   "author": "Jeremy",
-  "description": "Reviews and consolidates Tavo memories with provider diagnostics, safe backups, and a portable draggable launcher.",
+  "description": {
+    "$t": "plugin.description"
+  },
+  "localization": {
+    "defaultLocale": "en",
+    "resources": {
+      "en": "locales/en.json"
+    }
+  },
   "permissions": [
     "memory",
     "generate",

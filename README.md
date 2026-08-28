@@ -4,11 +4,11 @@
 
 Tavo Memory Curator is a plugin for [Tavo](https://tavoai.dev/) that helps review, consolidate, edit, and safely replace a chat's long-term memories. It works directly with Tavo's memory system instead of inserting cleanup prompts into the visible RPG conversation.
 
-Current beta release: **v0.6.0-beta**
+Current beta release: **v0.7.0-beta.1**
 
 ## Downloads
 
-- [Installable Tavo plugin (`.tpg`)](https://github.com/Hooch88/tavo-memory-curator/raw/refs/heads/main/downloads/tavo-memory-curator-0.6.0.tpg)
+- [Installable Tavo plugin (`.tpg`)](https://github.com/Hooch88/tavo-memory-curator/raw/refs/heads/main/downloads/tavo-memory-curator-0.7.0-beta.1.tpg)
 - [Recommended companion summary prompt](TAVO_MEMORY_CURATOR_SUMMARY_PROMPT.md)
 
 ## Why use it?
@@ -29,6 +29,8 @@ Long-running AI role-playing chats can accumulate duplicated, obsolete, overly v
 - Lets you edit or remove every proposed memory
 - Shows a concise explanation of material AI changes
 - Creates a restorable per-chat backup before replacement
+- Rereads every replacement and restores the backup automatically if Tavo does not preserve the requested memory state
+- Bounds AI analysis and one syntax-only repair attempt so a provider cannot leave the interface waiting indefinitely
 - Includes a draggable launcher that snaps to either screen edge and remembers its relative position across chats and screen sizes
 - Shows visible progress during AI analysis
 - Inherits Tavo's selected interface font
@@ -47,7 +49,7 @@ Basic Cleanup does not require an AI request.
 
 ## Installation
 
-1. Download [`tavo-memory-curator-0.6.0.tpg`](https://github.com/Hooch88/tavo-memory-curator/raw/refs/heads/main/downloads/tavo-memory-curator-0.6.0.tpg).
+1. Download [`tavo-memory-curator-0.7.0-beta.1.tpg`](https://github.com/Hooch88/tavo-memory-curator/raw/refs/heads/main/downloads/tavo-memory-curator-0.7.0-beta.1.tpg).
 2. Save the file on the Android device running Tavo.
 3. In Tavo, open **Settings → Plugins → Install**.
 4. Select the downloaded `.tpg` file.
@@ -103,12 +105,12 @@ Copy the entire file into Tavo's summary-memory prompt setting. The summary prom
 
 ## Token use
 
-- AI cleanup uses one private model request per press.
+- AI cleanup normally uses one private model request per press. If the response is malformed, the curator may make one bounded syntax-only repair request.
 - The request uses `context: false`, so the plugin sends the memory array rather than the full conversation context.
 - The static cleanup prompt was reduced by about 41% before this public beta.
 - Memories are serialized compactly without indentation whitespace.
 - Cleanup explanations are limited to five material changes.
-- The request permits up to 8,192 completion tokens so reasoning models have room to return a final answer. This is a ceiling, not a fixed charge; providers normally bill actual usage.
+- The main request permits up to 8,192 completion tokens and is bounded to three minutes. A repair, when needed, is bounded to one minute and 6,000 completion tokens. These are ceilings, not fixed charges; providers normally bill actual usage.
 - The configured model provider's normal token charges still apply.
 
 Basic Cleanup uses no model tokens.

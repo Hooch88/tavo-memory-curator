@@ -657,6 +657,8 @@
   const BACKUP_KEY = 'tavoMemoryCuratorBackup';
   const LAUNCHER_POSITION_KEY = 'tavoMemoryCuratorLauncherPosition';
   const DEFAULT_LAUNCHER_POSITION = { side: 'right', yRatio: 0.72 };
+  const ANALYSIS_TIMEOUT_MS = 180000;
+  const REPAIR_TIMEOUT_MS = 60000;
   const sheet = document.getElementById('tmc-sheet');
   const launcher = document.getElementById('tmc-launcher');
   const status = document.getElementById('tmc-status');
@@ -1219,8 +1221,26 @@
       .filter(Boolean);
   }
 
+  function withTimeout(promise, milliseconds, label) {
+    return new Promise((resolve, reject) => {
+      const timer = window.setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(milliseconds / 1000)} seconds`)), milliseconds);
+      Promise.resolve(promise).then(
+        (value) => { window.clearTimeout(timer); resolve(value); },
+        (error) => { window.clearTimeout(timer); reject(error); }
+      );
+    });
+  }
+
+  function sanitizeCleanupResponse(text) {
+    return String(text || '')
+      .replace(/^\uFEFF/, '')
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/<analysis>[\s\S]*?<\/analysis>/gi, '')
+      .trim();
+  }
+
   function parseCleanupResponse(text) {
-    let cleaned = String(text || '').trim();
+    let cleaned = sanitizeCleanupResponse(text);
     cleaned = cleaned.replace(/^```(?:json|text|markdown)?\s*/i, '').replace(/\s*```$/, '');
 
     const jsonStart = cleaned.indexOf('{');
@@ -1249,6 +1269,58 @@
     }
 
     return { memories, changes };
+  }
+
+  function buildCleanupRepairPrompt(raw) {
+    return [
+      'Repair the supplied Memory Curator output into the required tagged format.',
+      'Do not analyze the source memories again, invent facts, or expose reasoning.',
+      'Preserve only complete memory and change lines that are actually present.',
+      'Begin with <MEMORIES> and end with </CHANGES>.',
+      'Each memory must be one "- [CORE|CURRENT|HISTORY|OPEN] text" line.',
+      'Return no markdown fences, preamble, commentary, <think>, or <analysis> blocks.',
+      '',
+      'MALFORMED OUTPUT:',
+      String(raw || '').slice(0, 18000)
+    ].join('\n');
+  }
+
+  async function parseCleanupWithRepair(raw) {
+    try {
+      return { ...parseCleanupResponse(raw), repaired: false };
+    } catch (firstError) {
+      const repairedRaw = await withTimeout(tavo.generate(buildCleanupRepairPrompt(raw), {
+        context: false,
+        settings: { temperature: 0.01, maxCompletionTokens: 6000 }
+      }), REPAIR_TIMEOUT_MS, 'Memory cleanup repair');
+      try {
+        return { ...parseCleanupResponse(repairedRaw), repaired: true };
+      } catch (secondError) {
+        throw new Error(`The model response remained unusable after one repair attempt: ${secondError.message || firstError.message}`);
+      }
+    }
+  }
+
+  function memoryStateMatches(actual, expected) {
+    if (!actual || !expected || Boolean(actual.enabled) !== Boolean(expected.enabled)) return false;
+    if (!Array.isArray(actual.memories) || !Array.isArray(expected.memories) || actual.memories.length !== expected.memories.length) return false;
+    return actual.memories.every((memory, index) => memory === expected.memories[index]);
+  }
+
+  async function persistMemoryState(desired, rollback = null) {
+    await tavo.memory.update(desired);
+    const verified = await tavo.memory.current();
+    if (memoryStateMatches(verified, desired)) return verified;
+
+    if (rollback) {
+      await tavo.memory.update(rollback);
+      const restored = await tavo.memory.current();
+      if (!memoryStateMatches(restored, rollback)) {
+        throw new Error('Tavo did not preserve the requested memory state, and automatic rollback could not be verified');
+      }
+      throw new Error('Tavo did not preserve the requested memory state; the previous memories were restored automatically');
+    }
+    throw new Error('Tavo did not preserve the requested memory state');
   }
 
   async function proposeAiCleanup() {
@@ -1300,14 +1372,14 @@
         payload
       ].join('\n');
 
-      rawText = await tavo.generate(prompt, {
+      rawText = await withTimeout(tavo.generate(prompt, {
         context: false,
         settings: {
           temperature: 0.1,
           maxCompletionTokens: 8192
         }
-      });
-      const result = parseCleanupResponse(rawText);
+      }), ANALYSIS_TIMEOUT_MS, 'Memory analysis');
+      const result = await parseCleanupWithRepair(rawText);
       if (!Array.isArray(result.memories) || !result.memories.length) {
         throw new Error('The proposal did not contain a non-empty memories array');
       }
@@ -1321,7 +1393,7 @@
       clearRawResponse();
       renderProposed();
       renderChanges();
-      setStatus('AI proposal ready. Compare it with the current list and edit anything necessary before approval.');
+      setStatus(`AI proposal ready${result.repaired ? ' after repairing the model response' : ''}. Compare it with the current list and edit anything necessary before approval.`);
       tavo.utils.toast('AI memory proposal ready');
     } catch (error) {
       setAiWorking(false);
@@ -1350,13 +1422,15 @@
       applyButton.disabled = true;
       setStatus('Saving backup and updating Tavo Memories…');
       const latest = await tavo.memory.current();
+      const backupMemory = JSON.parse(JSON.stringify(latest));
       await tavo.set(BACKUP_KEY, {
         createdAt: new Date().toISOString(),
-        memory: JSON.parse(JSON.stringify(latest))
+        memory: backupMemory
       }, 'chat');
 
-      latest.memories = proposedMemories.map(formatMemoryItem).filter(Boolean);
-      await tavo.memory.update(latest);
+      const desired = JSON.parse(JSON.stringify(latest));
+      desired.memories = proposedMemories.map(formatMemoryItem).filter(Boolean);
+      await persistMemoryState(desired, backupMemory);
       tavo.utils.toast('Tavo Memories updated');
       await loadMemories();
       setStatus(`Update complete. A backup of the previous list is available through Restore Last Backup.`);
@@ -1381,9 +1455,10 @@
       if (!confirmed) return;
 
       const latest = await tavo.memory.current();
-      latest.enabled = backup.memory.enabled;
-      latest.memories = [...backup.memory.memories];
-      await tavo.memory.update(latest);
+      const desired = JSON.parse(JSON.stringify(latest));
+      desired.enabled = backup.memory.enabled;
+      desired.memories = [...backup.memory.memories];
+      await persistMemoryState(desired, latest);
       tavo.utils.toast('Memory backup restored');
       await loadMemories();
       setStatus('The last Memory Curator backup was restored.');
@@ -1415,6 +1490,16 @@
 
   function closePanel() {
     sheet.classList.add('tmc-hidden');
+  }
+
+  if (typeof __memoryCuratorTestHarness !== 'undefined' && __memoryCuratorTestHarness) {
+    Object.assign(__memoryCuratorTestHarness, {
+      sanitizeCleanupResponse,
+      parseCleanupResponse,
+      parseCleanupWithRepair,
+      memoryStateMatches,
+      persistMemoryState
+    });
   }
 
   setupLauncherGestures();

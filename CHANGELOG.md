@@ -4,6 +4,22 @@ All notable changes to Tavo Memory Curator are documented here.
 
 The project is currently in beta and may change before 1.0.0.
 
+## [0.7.0-beta.1] - 2026-08-28
+
+### Added
+
+- Three-minute AI analysis timeout and one bounded one-minute format-repair attempt
+- Removal of closed `<think>` and `<analysis>` blocks before parsing
+- Exact post-write verification for memory replacement and backup restoration
+- Automatic rollback to the saved backup when a replacement cannot be verified
+- Parser and persistence regression tests plus pull-request packaging CI
+- Manifest spec 2 metadata so Tavo enforces the minimum app version
+
+### Changed
+
+- AI cleanup may use a second provider request only when the first response cannot be parsed
+- Successful replacement is reported only after Tavo rereads the expected enabled state and complete memory array
+
 ## [0.6.0-beta] - 2026-07-15
 
 ### Added
