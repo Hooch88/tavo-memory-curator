@@ -1,8 +1,4 @@
 <div id="tmc-root">
-  <button id="tmc-launcher" type="button" aria-label="Open Tavo Memory Curator" title="Tavo Memory Curator">
-    <span class="tmc-launcher-symbol" aria-hidden="true">&#10022;</span>
-    <span class="tmc-launcher-ring" aria-hidden="true"></span>
-  </button>
 
   <section id="tmc-sheet" class="tmc-hidden" role="dialog" aria-modal="true" aria-labelledby="tmc-title">
     <div class="tmc-backdrop" data-tmc-close></div>
@@ -77,10 +73,6 @@
           <pre id="tmc-raw-output" class="tmc-raw-output tmc-hidden"></pre>
         </section>
 
-        <div class="tmc-launcher-setting">
-          <span>Launcher position is saved across chats.</span>
-          <button id="tmc-reset-launcher" type="button">Reset launcher position</button>
-        </div>
       </div>
 
       <footer class="tmc-actions">
@@ -111,54 +103,10 @@
     font-family: inherit;
   }
 
-  #tmc-launcher {
-    position: fixed;
-    left: calc(100% - 44px);
-    right: auto;
-    top: 72%;
-    bottom: auto;
-    z-index: 2147483000;
-    width: 32px;
-    height: 32px;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 50%;
-    background: rgba(14, 14, 17, 0.94);
-    color: white;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.42);
-    font: inherit;
-    font-size: 13px;
-    cursor: pointer;
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-    transition: left 180ms ease, top 180ms ease, transform 120ms ease;
-  }
 
-  #tmc-launcher.tmc-dragging {
-    cursor: grabbing;
-    transform: scale(1.08);
-    transition: none;
-  }
 
-  .tmc-launcher-symbol {
-    position: relative;
-    z-index: 1;
-  }
 
-  .tmc-launcher-ring {
-    position: absolute;
-    inset: -4px;
-    display: none;
-    border: 2px solid transparent;
-    border-top-color: #bff4e9;
-    border-right-color: rgba(191, 244, 233, 0.45);
-    border-radius: 50%;
-  }
 
-  #tmc-root.tmc-working .tmc-launcher-ring {
-    display: block;
-    animation: tmc-spin 0.85s linear infinite;
-  }
 
   #tmc-sheet {
     position: fixed;
@@ -546,7 +494,6 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    #tmc-root.tmc-working .tmc-launcher-ring,
     #tmc-root.tmc-working .tmc-inline-spinner,
     .tmc-skeleton-row {
       animation-duration: 2.4s;
@@ -604,40 +551,10 @@
     font-weight: 750;
   }
 
-  .tmc-launcher-setting {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    margin: 14px 0 2px;
-    padding: 10px 11px;
-    border: 1px solid var(--tmc-border);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.025);
-    color: var(--tmc-muted);
-    font-size: 10px;
-    line-height: 1.35;
-  }
 
-  .tmc-launcher-setting button {
-    flex: 0 0 auto;
-    min-height: 34px;
-    padding: 7px 9px;
-    border: 1px solid var(--tmc-border);
-    border-radius: 9px;
-    background: var(--tmc-surface-2);
-    color: var(--tmc-text);
-    font: inherit;
-    font-size: 10px;
-    font-weight: 750;
-  }
 
   @media (min-width: 760px) {
-    #tmc-launcher {
-      width: 40px;
-      height: 40px;
-    }
-
+  
     #tmc-sheet {
       align-items: center;
       padding: 24px;
@@ -658,12 +575,9 @@
   root.dataset.ready = 'true';
 
   const BACKUP_KEY = 'tavoMemoryCuratorBackup';
-  const LAUNCHER_POSITION_KEY = 'tavoMemoryCuratorLauncherPosition';
-  const DEFAULT_LAUNCHER_POSITION = { side: 'right', yRatio: 0.72 };
   const ANALYSIS_TIMEOUT_MS = 180000;
   const REPAIR_TIMEOUT_MS = 60000;
   const sheet = document.getElementById('tmc-sheet');
-  const launcher = document.getElementById('tmc-launcher');
   const status = document.getElementById('tmc-status');
   const currentList = document.getElementById('tmc-current-list');
   const proposedList = document.getElementById('tmc-proposed-list');
@@ -690,146 +604,10 @@
   let proposalSource = null;
   let isAiWorking = false;
   let statusTimer = null;
-  let launcherPosition = { ...DEFAULT_LAUNCHER_POSITION };
-  let launcherDrag = null;
   let lastRawResponse = '';
 
   function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
-  }
-
-  function viewportBounds() {
-    const viewport = window.visualViewport;
-    return {
-      left: viewport ? viewport.offsetLeft : 0,
-      top: viewport ? viewport.offsetTop : 0,
-      width: viewport ? viewport.width : window.innerWidth,
-      height: viewport ? viewport.height : window.innerHeight
-    };
-  }
-
-  function launcherMetrics() {
-    const bounds = viewportBounds();
-    const width = launcher.offsetWidth || 32;
-    const height = launcher.offsetHeight || 32;
-    const edgeGap = 10;
-    const verticalGap = 12;
-    const minLeft = bounds.left + edgeGap;
-    const maxLeft = Math.max(minLeft, bounds.left + bounds.width - width - edgeGap);
-    const insets = tavo.ui && typeof tavo.ui.getInsets === 'function' ? tavo.ui.getInsets() : { topBar: 48, bottomInput: 72 };
-    const minTop = Math.max(bounds.top, Number(insets.topBar) || 0) + verticalGap;
-    const maxTop = Math.max(minTop, Math.min(bounds.top + bounds.height, window.innerHeight - (Number(insets.bottomInput) || 0)) - height - verticalGap);
-    return { bounds, width, height, minLeft, maxLeft, minTop, maxTop };
-  }
-
-  function applyLauncherPosition() {
-    const metrics = launcherMetrics();
-    const savedRatio = Number(launcherPosition.yRatio);
-    const ratio = clamp(Number.isFinite(savedRatio) ? savedRatio : DEFAULT_LAUNCHER_POSITION.yRatio, 0, 1);
-    const top = metrics.minTop + ratio * (metrics.maxTop - metrics.minTop);
-    const left = launcherPosition.side === 'left' ? metrics.minLeft : metrics.maxLeft;
-    launcher.style.left = `${Math.round(left)}px`;
-    launcher.style.top = `${Math.round(top)}px`;
-    launcher.style.right = 'auto';
-    launcher.style.bottom = 'auto';
-  }
-
-  async function loadLauncherPosition() {
-    try {
-      const saved = await tavo.get(LAUNCHER_POSITION_KEY, 'global');
-      if (saved && (saved.side === 'left' || saved.side === 'right') && Number.isFinite(Number(saved.yRatio))) {
-        launcherPosition = {
-          side: saved.side,
-          yRatio: clamp(Number(saved.yRatio), 0, 1)
-        };
-      }
-    } catch {
-      launcherPosition = { ...DEFAULT_LAUNCHER_POSITION };
-    }
-    applyLauncherPosition();
-  }
-
-  async function saveLauncherPosition() {
-    try {
-      await tavo.set(LAUNCHER_POSITION_KEY, launcherPosition, 'global');
-    } catch {
-      // Position still remains active for the current page session.
-    }
-  }
-
-  function finishLauncherDrag(event, cancelled = false) {
-    if (!launcherDrag || event.pointerId !== launcherDrag.pointerId) return;
-    const wasDragging = launcherDrag.dragging;
-    try { launcher.releasePointerCapture(event.pointerId); } catch {}
-
-    if (cancelled) {
-      launcher.classList.remove('tmc-dragging');
-      launcherDrag = null;
-      applyLauncherPosition();
-      return;
-    }
-
-    if (wasDragging) {
-      const metrics = launcherMetrics();
-      const currentLeft = parseFloat(launcher.style.left) || metrics.minLeft;
-      const currentTop = clamp(parseFloat(launcher.style.top) || metrics.minTop, metrics.minTop, metrics.maxTop);
-      const center = currentLeft + metrics.width / 2;
-      launcherPosition.side = center < metrics.bounds.left + metrics.bounds.width / 2 ? 'left' : 'right';
-      launcherPosition.yRatio = metrics.maxTop === metrics.minTop
-        ? 0
-        : clamp((currentTop - metrics.minTop) / (metrics.maxTop - metrics.minTop), 0, 1);
-      launcher.classList.remove('tmc-dragging');
-      launcherDrag = null;
-      applyLauncherPosition();
-      saveLauncherPosition();
-      tavo.utils.toast('Launcher position saved');
-      return;
-    }
-
-    launcher.classList.remove('tmc-dragging');
-    launcherDrag = null;
-    openPanel();
-  }
-
-  function setupLauncherGestures() {
-    launcher.addEventListener('pointerdown', (event) => {
-      if (event.button !== undefined && event.button !== 0) return;
-      const rect = launcher.getBoundingClientRect();
-      launcherDrag = {
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        offsetX: event.clientX - rect.left,
-        offsetY: event.clientY - rect.top,
-        dragging: false
-      };
-      launcher.setPointerCapture(event.pointerId);
-      event.preventDefault();
-    });
-
-    launcher.addEventListener('pointermove', (event) => {
-      if (!launcherDrag || event.pointerId !== launcherDrag.pointerId) return;
-      const distance = Math.hypot(event.clientX - launcherDrag.startX, event.clientY - launcherDrag.startY);
-      if (!launcherDrag.dragging && distance < 6) return;
-      launcherDrag.dragging = true;
-      launcher.classList.add('tmc-dragging');
-      const metrics = launcherMetrics();
-      const left = clamp(event.clientX - launcherDrag.offsetX, metrics.minLeft, metrics.maxLeft);
-      const top = clamp(event.clientY - launcherDrag.offsetY, metrics.minTop, metrics.maxTop);
-      launcher.style.left = `${Math.round(left)}px`;
-      launcher.style.top = `${Math.round(top)}px`;
-      event.preventDefault();
-    });
-
-    launcher.addEventListener('pointerup', (event) => finishLauncherDrag(event));
-    launcher.addEventListener('pointercancel', (event) => finishLauncherDrag(event, true));
-  }
-
-  async function resetLauncherPosition() {
-    launcherPosition = { ...DEFAULT_LAUNCHER_POSITION };
-    applyLauncherPosition();
-    await saveLauncherPosition();
-    tavo.utils.toast('Launcher position reset');
   }
 
   function setStatus(message) {
@@ -1512,20 +1290,21 @@
       parseCleanupWithRepair,
       memoryStateMatches,
       assertProposalCurrent,
-      launcherMetrics,
       persistMemoryState
     });
   }
 
-  setupLauncherGestures();
-  loadLauncherPosition();
-  if (tavo.ui && typeof tavo.ui.onInsetsChanged === 'function') tavo.ui.onInsetsChanged(applyLauncherPosition);
-  window.addEventListener('resize', applyLauncherPosition);
-  window.addEventListener('orientationchange', applyLauncherPosition);
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', applyLauncherPosition);
-    window.visualViewport.addEventListener('scroll', applyLauncherPosition);
-  }
+  let lastOpenNonce = String(tavo.get('tavoMemoryCuratorOpen', 'chat')?.nonce || '');
+  setInterval(() => {
+    try {
+      const command = tavo.get('tavoMemoryCuratorOpen', 'chat');
+      const nonce = String(command?.nonce || '');
+      if (nonce && nonce !== lastOpenNonce) {
+        lastOpenNonce = nonce;
+        openPanel();
+      }
+    } catch (_) {}
+  }, 300);
   document.getElementById('tmc-close').addEventListener('click', closePanel);
   root.querySelector('[data-tmc-close]').addEventListener('click', closePanel);
   document.getElementById('tmc-reload').addEventListener('click', loadMemories);
@@ -1547,6 +1326,5 @@
     rawOutput.classList.toggle('tmc-hidden', expanded);
   });
   copyRawButton.addEventListener('click', copyRawResponse);
-  document.getElementById('tmc-reset-launcher').addEventListener('click', resetLauncherPosition);
 })();
 </script>

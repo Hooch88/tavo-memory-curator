@@ -3,7 +3,7 @@
   "name": {
     "$t": "plugin.name"
   },
-  "version": "0.7.0-beta.2",
+  "version": "0.7.0-beta.3",
   "specVersion": 2,
   "minAppVersion": "0.91.0",
   "author": "Jeremy",
@@ -28,7 +28,16 @@
         "src": "ui/panel.html",
         "mount": "/chat/body/end"
       }
+    ],
+    "sidebar": [
+      {
+        "id": "open-memory-curator",
+        "label": {
+          "$t": "actions.openMemoryCurator"
+        }
+      }
     ]
   },
-  "releaseNotes": "Keep panel and draggable launcher within Tavo layout insets; pass native request timeouts; reject stale proposals when memories changed after review."
+  "releaseNotes": "Remove floating launcher and open Memory Curator from the native chat sidebar.",
+  "entry": "entry.js"
 }

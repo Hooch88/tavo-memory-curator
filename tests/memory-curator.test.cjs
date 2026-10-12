@@ -60,7 +60,7 @@ const context = {
     confirm() { return true; }
   },
   navigator: { clipboard: { async writeText() {} } },
-  setTimeout, clearTimeout, setInterval, clearInterval
+  setTimeout, clearTimeout, setInterval() { return 1; }, clearInterval
 };
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'ui', 'panel.html'), 'utf8');
@@ -83,8 +83,6 @@ function plain(value) { return JSON.parse(JSON.stringify(value)); }
 
   assert.doesNotThrow(() => harness.assertProposalCurrent(memoryState, memoryState));
   assert.throws(() => harness.assertProposalCurrent({ enabled: true, memories: ['new fact'] }, memoryState), /changed after this proposal/);
-  const metrics = harness.launcherMetrics();
-  assert(metrics.minTop >= 48 && metrics.maxTop + metrics.height <= 844 - 72);
 
   const desired = { enabled: true, memories: ['- [CURRENT] Updated fact'] };
   const original = { enabled: true, memories: ['- [CORE] Original fact'] };
