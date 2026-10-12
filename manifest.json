@@ -3,7 +3,7 @@
   "name": {
     "$t": "plugin.name"
   },
-  "version": "0.7.0-beta.1",
+  "version": "0.7.0-beta.2",
   "specVersion": 2,
   "minAppVersion": "0.91.0",
   "author": "Jeremy",
@@ -29,5 +29,6 @@
         "mount": "/chat/body/end"
       }
     ]
-  }
+  },
+  "releaseNotes": "Keep panel and draggable launcher within Tavo layout insets; pass native request timeouts; reject stale proposals when memories changed after review."
 }

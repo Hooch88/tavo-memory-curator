@@ -81,6 +81,11 @@ function plain(value) { return JSON.parse(JSON.stringify(value)); }
   assert.strictEqual(repaired.repaired, true);
   assert.deepStrictEqual(plain(repaired.memories), ['- [CURRENT] Repaired fact']);
 
+  assert.doesNotThrow(() => harness.assertProposalCurrent(memoryState, memoryState));
+  assert.throws(() => harness.assertProposalCurrent({ enabled: true, memories: ['new fact'] }, memoryState), /changed after this proposal/);
+  const metrics = harness.launcherMetrics();
+  assert(metrics.minTop >= 48 && metrics.maxTop + metrics.height <= 844 - 72);
+
   const desired = { enabled: true, memories: ['- [CURRENT] Updated fact'] };
   const original = { enabled: true, memories: ['- [CORE] Original fact'] };
   await harness.persistMemoryState(desired, original);

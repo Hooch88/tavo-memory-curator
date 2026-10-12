@@ -162,7 +162,10 @@
 
   #tmc-sheet {
     position: fixed;
-    inset: 0;
+    top: var(--tavo-inset-top-bar, 48px);
+    bottom: var(--tavo-inset-bottom-input, 72px);
+    left: 0;
+    right: 0;
     z-index: 2147483001;
     display: flex;
     align-items: flex-end;
@@ -186,7 +189,7 @@
     display: flex;
     flex-direction: column;
     width: min(100%, 820px);
-    max-height: 90vh;
+    max-height: 100%;
     overflow: hidden;
     border: 1px solid var(--tmc-border);
     border-bottom: 0;
@@ -713,8 +716,9 @@
     const verticalGap = 12;
     const minLeft = bounds.left + edgeGap;
     const maxLeft = Math.max(minLeft, bounds.left + bounds.width - width - edgeGap);
-    const minTop = bounds.top + verticalGap;
-    const maxTop = Math.max(minTop, bounds.top + bounds.height - height - verticalGap);
+    const insets = tavo.ui && typeof tavo.ui.getInsets === 'function' ? tavo.ui.getInsets() : { topBar: 48, bottomInput: 72 };
+    const minTop = Math.max(bounds.top, Number(insets.topBar) || 0) + verticalGap;
+    const maxTop = Math.max(minTop, Math.min(bounds.top + bounds.height, window.innerHeight - (Number(insets.bottomInput) || 0)) - height - verticalGap);
     return { bounds, width, height, minLeft, maxLeft, minTop, maxTop };
   }
 
@@ -1291,6 +1295,7 @@
     } catch (firstError) {
       const repairedRaw = await withTimeout(tavo.generate(buildCleanupRepairPrompt(raw), {
         context: false,
+        timeout: REPAIR_TIMEOUT_MS,
         settings: { temperature: 0.01, maxCompletionTokens: 6000 }
       }), REPAIR_TIMEOUT_MS, 'Memory cleanup repair');
       try {
@@ -1305,6 +1310,12 @@
     if (!actual || !expected || Boolean(actual.enabled) !== Boolean(expected.enabled)) return false;
     if (!Array.isArray(actual.memories) || !Array.isArray(expected.memories) || actual.memories.length !== expected.memories.length) return false;
     return actual.memories.every((memory, index) => memory === expected.memories[index]);
+  }
+
+  function assertProposalCurrent(latest, baseline = currentMemory) {
+    if (!memoryStateMatches(latest, baseline)) {
+      throw new Error('Memories changed after this proposal was prepared. Reload memories and prepare a fresh proposal before applying.');
+    }
   }
 
   async function persistMemoryState(desired, rollback = null) {
@@ -1374,6 +1385,7 @@
 
       rawText = await withTimeout(tavo.generate(prompt, {
         context: false,
+        timeout: ANALYSIS_TIMEOUT_MS,
         settings: {
           temperature: 0.1,
           maxCompletionTokens: 8192
@@ -1422,6 +1434,7 @@
       applyButton.disabled = true;
       setStatus('Saving backup and updating Tavo Memories…');
       const latest = await tavo.memory.current();
+      assertProposalCurrent(latest);
       const backupMemory = JSON.parse(JSON.stringify(latest));
       await tavo.set(BACKUP_KEY, {
         createdAt: new Date().toISOString(),
@@ -1498,12 +1511,15 @@
       parseCleanupResponse,
       parseCleanupWithRepair,
       memoryStateMatches,
+      assertProposalCurrent,
+      launcherMetrics,
       persistMemoryState
     });
   }
 
   setupLauncherGestures();
   loadLauncherPosition();
+  if (tavo.ui && typeof tavo.ui.onInsetsChanged === 'function') tavo.ui.onInsetsChanged(applyLauncherPosition);
   window.addEventListener('resize', applyLauncherPosition);
   window.addEventListener('orientationchange', applyLauncherPosition);
   if (window.visualViewport) {
