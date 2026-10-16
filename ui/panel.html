@@ -1097,19 +1097,25 @@
   }
 
   async function persistMemoryState(desired, rollback = null) {
-    await tavo.memory.update(desired);
-    const verified = await tavo.memory.current();
-    if (memoryStateMatches(verified, desired)) return verified;
+    let failure;
+    try {
+      await tavo.memory.update(desired);
+      const verified = await tavo.memory.current();
+      if (memoryStateMatches(verified, desired)) return verified;
+      failure = new Error('Tavo did not preserve the requested memory state');
+    } catch (error) {
+      failure = error;
+    }
+    if (!rollback) throw failure;
 
-    if (rollback) {
+    try {
       await tavo.memory.update(rollback);
       const restored = await tavo.memory.current();
-      if (!memoryStateMatches(restored, rollback)) {
-        throw new Error('Tavo did not preserve the requested memory state, and automatic rollback could not be verified');
-      }
-      throw new Error('Tavo did not preserve the requested memory state; the previous memories were restored automatically');
+      if (!memoryStateMatches(restored, rollback)) throw new Error('Restored state differs from the backup');
+    } catch (error) {
+      throw new Error(`Memory replacement failed, and automatic rollback could not be verified. Use Restore Backup and reload memories. ${error.message || error}`);
     }
-    throw new Error('Tavo did not preserve the requested memory state');
+    throw new Error(`Memory replacement failed; the previous memories were restored automatically. ${failure.message || failure}`);
   }
 
   async function proposeAiCleanup() {

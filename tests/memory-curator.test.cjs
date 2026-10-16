@@ -23,12 +23,16 @@ function getElement(id) {
 
 let memoryState = { enabled: true, memories: ['- [CORE] Original fact'] };
 let corruptNextWrite = false;
+let failNextRead = false;
 const variables = new Map();
 const tavo = {
   get(key) { return variables.get(key) ?? null; },
   set(key, value) { variables.set(key, value); },
   memory: {
-    async current() { return JSON.parse(JSON.stringify(memoryState)); },
+    async current() {
+      if (failNextRead) { failNextRead = false; throw new Error('transient verification read failure'); }
+      return JSON.parse(JSON.stringify(memoryState));
+    },
     async update(next) {
       memoryState = JSON.parse(JSON.stringify(next));
       if (corruptNextWrite) {
@@ -97,6 +101,17 @@ function plain(value) { return JSON.parse(JSON.stringify(value)); }
     'A mismatched write must fail and restore the previous memory state.'
   );
   assert.deepStrictEqual(memoryState, original, 'Rollback must restore the exact previous memory state.');
+
+  memoryState = JSON.parse(JSON.stringify(original));
+  failNextRead = true;
+  await assert.rejects(harness.persistMemoryState(desired, original), /restored automatically/i);
+  assert.deepStrictEqual(memoryState, original, 'A thrown verification read must also restore previous memories.');
+
+  const normalRead = tavo.memory.current;
+  tavo.memory.current = async () => { throw new Error('persistent read failure'); };
+  await assert.rejects(harness.persistMemoryState(desired, original), /rollback could not be verified/i);
+  assert.deepStrictEqual(memoryState, original, 'Rollback should still be attempted if verification stays unavailable.');
+  tavo.memory.current = normalRead;
 
   console.log('Memory Curator parser and persistence safeguards passed.');
 })().catch((error) => {

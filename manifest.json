@@ -3,7 +3,7 @@
   "name": {
     "$t": "plugin.name"
   },
-  "version": "0.7.0-beta.3",
+  "version": "0.7.0-beta.4",
   "specVersion": 2,
   "minAppVersion": "0.91.0",
   "author": "Jeremy",
@@ -38,6 +38,6 @@
       }
     ]
   },
-  "releaseNotes": "Remove floating launcher and open Memory Curator from the native chat sidebar.",
+  "releaseNotes": "Attempt verified rollback after memory update or verification exceptions; correct sidebar navigation instructions.",
   "entry": "entry.js"
 }
