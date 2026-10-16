@@ -4,11 +4,11 @@
 
 Tavo Memory Curator is a plugin for [Tavo](https://tavoai.dev/) that helps review, consolidate, edit, and safely replace a chat's long-term memories. It works directly with Tavo's memory system instead of inserting cleanup prompts into the visible RPG conversation.
 
-Current beta release: **v0.6.0-beta**
+Current maintenance beta: **v0.7.0-beta.4** (on `codex/tavo-1.7.0`; not yet merged into `main`).
 
 ## Downloads
 
-- [Installable Tavo plugin (`.tpg`)](https://github.com/Hooch88/tavo-memory-curator/raw/refs/heads/main/downloads/tavo-memory-curator-0.6.0.tpg)
+- [Maintenance builds in GitHub Actions](https://github.com/Hooch88/tavo-memory-curator/actions/workflows/build.yml) — open the successful run for `codex/tavo-1.7.0`, download the `tavo-memory-curator` artifact and extract its `.tpg`. GitHub sign-in is required to download workflow artifacts.
 - [Recommended companion summary prompt](TAVO_MEMORY_CURATOR_SUMMARY_PROMPT.md)
 
 ## Why use it?
@@ -29,7 +29,9 @@ Long-running AI role-playing chats can accumulate duplicated, obsolete, overly v
 - Lets you edit or remove every proposed memory
 - Shows a concise explanation of material AI changes
 - Creates a restorable per-chat backup before replacement
-- Includes a draggable launcher that snaps to either screen edge and remembers its relative position across chats and screen sizes
+- Rereads every replacement and restores the backup automatically if Tavo does not preserve the requested memory state
+- Bounds AI analysis and one syntax-only repair attempt so a provider cannot leave the interface waiting indefinitely
+- Opens from the Tavo sidebar without a floating launcher
 - Shows visible progress during AI analysis
 - Inherits Tavo's selected interface font
 - Accepts tagged text, categorized bullets, numbered lines, category headings, common Markdown label styles, and legacy JSON responses
@@ -47,7 +49,7 @@ Basic Cleanup does not require an AI request.
 
 ## Installation
 
-1. Download [`tavo-memory-curator-0.6.0.tpg`](https://github.com/Hooch88/tavo-memory-curator/raw/refs/heads/main/downloads/tavo-memory-curator-0.6.0.tpg).
+1. Download the maintenance build artifact linked above and extract `tavo-memory-curator-0.7.0-beta.4.tpg`.
 2. Save the file on the Android device running Tavo.
 3. In Tavo, open **Settings → Plugins → Install**.
 4. Select the downloaded `.tpg` file.
@@ -57,14 +59,9 @@ Basic Cleanup does not require an AI request.
 
 ## Using the plugin
 
-### Open and position the launcher
+### Open Memory Curator
 
-- Tap the small star launcher to open Memory Curator.
-- Drag it to reposition it.
-- Release it to snap to the nearest screen edge.
-- Use **Reset launcher position** inside the panel if needed.
-
-The position is stored as an edge plus a vertical percentage, so it adapts to different screen sizes and orientations.
+Open Tavo's sidebar and choose **Memory Curator**. The panel opens for the current chat. Close it with the panel's close button.
 
 ### Refresh memories
 
@@ -103,12 +100,12 @@ Copy the entire file into Tavo's summary-memory prompt setting. The summary prom
 
 ## Token use
 
-- AI cleanup uses one private model request per press.
+- AI cleanup normally uses one private model request per press. If the response is malformed, the curator may make one bounded syntax-only repair request.
 - The request uses `context: false`, so the plugin sends the memory array rather than the full conversation context.
 - The static cleanup prompt was reduced by about 41% before this public beta.
 - Memories are serialized compactly without indentation whitespace.
 - Cleanup explanations are limited to five material changes.
-- The request permits up to 8,192 completion tokens so reasoning models have room to return a final answer. This is a ceiling, not a fixed charge; providers normally bill actual usage.
+- The main request permits up to 8,192 completion tokens and is bounded to three minutes. A repair, when needed, is bounded to one minute and 6,000 completion tokens. These are ceilings, not fixed charges; providers normally bill actual usage.
 - The configured model provider's normal token charges still apply.
 
 Basic Cleanup uses no model tokens.
@@ -163,6 +160,7 @@ Plugin structure:
 
 ```text
 manifest.json
+entry.js
 ui/
 └── panel.html
 TAVO_MEMORY_CURATOR_SUMMARY_PROMPT.md

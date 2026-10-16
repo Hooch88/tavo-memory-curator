@@ -1,0 +1,5 @@
+{
+  "plugin.name": "Tavo Memory Curator",
+  "plugin.description": "Reviews, consolidates, edits, and safely replaces the current chat's Tavo Memories. AI cleanup is review-first, every replacement creates a restorable backup, and updates are reread and verified before success is reported.",
+  "actions.openMemoryCurator": "Open Memory Curator"
+}

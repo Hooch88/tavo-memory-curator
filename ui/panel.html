@@ -1,8 +1,4 @@
 <div id="tmc-root">
-  <button id="tmc-launcher" type="button" aria-label="Open Tavo Memory Curator" title="Tavo Memory Curator">
-    <span class="tmc-launcher-symbol" aria-hidden="true">&#10022;</span>
-    <span class="tmc-launcher-ring" aria-hidden="true"></span>
-  </button>
 
   <section id="tmc-sheet" class="tmc-hidden" role="dialog" aria-modal="true" aria-labelledby="tmc-title">
     <div class="tmc-backdrop" data-tmc-close></div>
@@ -77,10 +73,6 @@
           <pre id="tmc-raw-output" class="tmc-raw-output tmc-hidden"></pre>
         </section>
 
-        <div class="tmc-launcher-setting">
-          <span>Launcher position is saved across chats.</span>
-          <button id="tmc-reset-launcher" type="button">Reset launcher position</button>
-        </div>
       </div>
 
       <footer class="tmc-actions">
@@ -111,58 +103,17 @@
     font-family: inherit;
   }
 
-  #tmc-launcher {
-    position: fixed;
-    left: calc(100% - 44px);
-    right: auto;
-    top: 72%;
-    bottom: auto;
-    z-index: 2147483000;
-    width: 32px;
-    height: 32px;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 50%;
-    background: rgba(14, 14, 17, 0.94);
-    color: white;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.42);
-    font: inherit;
-    font-size: 13px;
-    cursor: pointer;
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-    transition: left 180ms ease, top 180ms ease, transform 120ms ease;
-  }
 
-  #tmc-launcher.tmc-dragging {
-    cursor: grabbing;
-    transform: scale(1.08);
-    transition: none;
-  }
 
-  .tmc-launcher-symbol {
-    position: relative;
-    z-index: 1;
-  }
 
-  .tmc-launcher-ring {
-    position: absolute;
-    inset: -4px;
-    display: none;
-    border: 2px solid transparent;
-    border-top-color: #bff4e9;
-    border-right-color: rgba(191, 244, 233, 0.45);
-    border-radius: 50%;
-  }
 
-  #tmc-root.tmc-working .tmc-launcher-ring {
-    display: block;
-    animation: tmc-spin 0.85s linear infinite;
-  }
 
   #tmc-sheet {
     position: fixed;
-    inset: 0;
+    top: var(--tavo-inset-top-bar, 48px);
+    bottom: var(--tavo-inset-bottom-input, 72px);
+    left: 0;
+    right: 0;
     z-index: 2147483001;
     display: flex;
     align-items: flex-end;
@@ -186,7 +137,7 @@
     display: flex;
     flex-direction: column;
     width: min(100%, 820px);
-    max-height: 90vh;
+    max-height: 100%;
     overflow: hidden;
     border: 1px solid var(--tmc-border);
     border-bottom: 0;
@@ -543,7 +494,6 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    #tmc-root.tmc-working .tmc-launcher-ring,
     #tmc-root.tmc-working .tmc-inline-spinner,
     .tmc-skeleton-row {
       animation-duration: 2.4s;
@@ -601,40 +551,10 @@
     font-weight: 750;
   }
 
-  .tmc-launcher-setting {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    margin: 14px 0 2px;
-    padding: 10px 11px;
-    border: 1px solid var(--tmc-border);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.025);
-    color: var(--tmc-muted);
-    font-size: 10px;
-    line-height: 1.35;
-  }
 
-  .tmc-launcher-setting button {
-    flex: 0 0 auto;
-    min-height: 34px;
-    padding: 7px 9px;
-    border: 1px solid var(--tmc-border);
-    border-radius: 9px;
-    background: var(--tmc-surface-2);
-    color: var(--tmc-text);
-    font: inherit;
-    font-size: 10px;
-    font-weight: 750;
-  }
 
   @media (min-width: 760px) {
-    #tmc-launcher {
-      width: 40px;
-      height: 40px;
-    }
-
+  
     #tmc-sheet {
       align-items: center;
       padding: 24px;
@@ -655,10 +575,9 @@
   root.dataset.ready = 'true';
 
   const BACKUP_KEY = 'tavoMemoryCuratorBackup';
-  const LAUNCHER_POSITION_KEY = 'tavoMemoryCuratorLauncherPosition';
-  const DEFAULT_LAUNCHER_POSITION = { side: 'right', yRatio: 0.72 };
+  const ANALYSIS_TIMEOUT_MS = 180000;
+  const REPAIR_TIMEOUT_MS = 60000;
   const sheet = document.getElementById('tmc-sheet');
-  const launcher = document.getElementById('tmc-launcher');
   const status = document.getElementById('tmc-status');
   const currentList = document.getElementById('tmc-current-list');
   const proposedList = document.getElementById('tmc-proposed-list');
@@ -685,145 +604,10 @@
   let proposalSource = null;
   let isAiWorking = false;
   let statusTimer = null;
-  let launcherPosition = { ...DEFAULT_LAUNCHER_POSITION };
-  let launcherDrag = null;
   let lastRawResponse = '';
 
   function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
-  }
-
-  function viewportBounds() {
-    const viewport = window.visualViewport;
-    return {
-      left: viewport ? viewport.offsetLeft : 0,
-      top: viewport ? viewport.offsetTop : 0,
-      width: viewport ? viewport.width : window.innerWidth,
-      height: viewport ? viewport.height : window.innerHeight
-    };
-  }
-
-  function launcherMetrics() {
-    const bounds = viewportBounds();
-    const width = launcher.offsetWidth || 32;
-    const height = launcher.offsetHeight || 32;
-    const edgeGap = 10;
-    const verticalGap = 12;
-    const minLeft = bounds.left + edgeGap;
-    const maxLeft = Math.max(minLeft, bounds.left + bounds.width - width - edgeGap);
-    const minTop = bounds.top + verticalGap;
-    const maxTop = Math.max(minTop, bounds.top + bounds.height - height - verticalGap);
-    return { bounds, width, height, minLeft, maxLeft, minTop, maxTop };
-  }
-
-  function applyLauncherPosition() {
-    const metrics = launcherMetrics();
-    const savedRatio = Number(launcherPosition.yRatio);
-    const ratio = clamp(Number.isFinite(savedRatio) ? savedRatio : DEFAULT_LAUNCHER_POSITION.yRatio, 0, 1);
-    const top = metrics.minTop + ratio * (metrics.maxTop - metrics.minTop);
-    const left = launcherPosition.side === 'left' ? metrics.minLeft : metrics.maxLeft;
-    launcher.style.left = `${Math.round(left)}px`;
-    launcher.style.top = `${Math.round(top)}px`;
-    launcher.style.right = 'auto';
-    launcher.style.bottom = 'auto';
-  }
-
-  async function loadLauncherPosition() {
-    try {
-      const saved = await tavo.get(LAUNCHER_POSITION_KEY, 'global');
-      if (saved && (saved.side === 'left' || saved.side === 'right') && Number.isFinite(Number(saved.yRatio))) {
-        launcherPosition = {
-          side: saved.side,
-          yRatio: clamp(Number(saved.yRatio), 0, 1)
-        };
-      }
-    } catch {
-      launcherPosition = { ...DEFAULT_LAUNCHER_POSITION };
-    }
-    applyLauncherPosition();
-  }
-
-  async function saveLauncherPosition() {
-    try {
-      await tavo.set(LAUNCHER_POSITION_KEY, launcherPosition, 'global');
-    } catch {
-      // Position still remains active for the current page session.
-    }
-  }
-
-  function finishLauncherDrag(event, cancelled = false) {
-    if (!launcherDrag || event.pointerId !== launcherDrag.pointerId) return;
-    const wasDragging = launcherDrag.dragging;
-    try { launcher.releasePointerCapture(event.pointerId); } catch {}
-
-    if (cancelled) {
-      launcher.classList.remove('tmc-dragging');
-      launcherDrag = null;
-      applyLauncherPosition();
-      return;
-    }
-
-    if (wasDragging) {
-      const metrics = launcherMetrics();
-      const currentLeft = parseFloat(launcher.style.left) || metrics.minLeft;
-      const currentTop = clamp(parseFloat(launcher.style.top) || metrics.minTop, metrics.minTop, metrics.maxTop);
-      const center = currentLeft + metrics.width / 2;
-      launcherPosition.side = center < metrics.bounds.left + metrics.bounds.width / 2 ? 'left' : 'right';
-      launcherPosition.yRatio = metrics.maxTop === metrics.minTop
-        ? 0
-        : clamp((currentTop - metrics.minTop) / (metrics.maxTop - metrics.minTop), 0, 1);
-      launcher.classList.remove('tmc-dragging');
-      launcherDrag = null;
-      applyLauncherPosition();
-      saveLauncherPosition();
-      tavo.utils.toast('Launcher position saved');
-      return;
-    }
-
-    launcher.classList.remove('tmc-dragging');
-    launcherDrag = null;
-    openPanel();
-  }
-
-  function setupLauncherGestures() {
-    launcher.addEventListener('pointerdown', (event) => {
-      if (event.button !== undefined && event.button !== 0) return;
-      const rect = launcher.getBoundingClientRect();
-      launcherDrag = {
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        offsetX: event.clientX - rect.left,
-        offsetY: event.clientY - rect.top,
-        dragging: false
-      };
-      launcher.setPointerCapture(event.pointerId);
-      event.preventDefault();
-    });
-
-    launcher.addEventListener('pointermove', (event) => {
-      if (!launcherDrag || event.pointerId !== launcherDrag.pointerId) return;
-      const distance = Math.hypot(event.clientX - launcherDrag.startX, event.clientY - launcherDrag.startY);
-      if (!launcherDrag.dragging && distance < 6) return;
-      launcherDrag.dragging = true;
-      launcher.classList.add('tmc-dragging');
-      const metrics = launcherMetrics();
-      const left = clamp(event.clientX - launcherDrag.offsetX, metrics.minLeft, metrics.maxLeft);
-      const top = clamp(event.clientY - launcherDrag.offsetY, metrics.minTop, metrics.maxTop);
-      launcher.style.left = `${Math.round(left)}px`;
-      launcher.style.top = `${Math.round(top)}px`;
-      event.preventDefault();
-    });
-
-    launcher.addEventListener('pointerup', (event) => finishLauncherDrag(event));
-    launcher.addEventListener('pointercancel', (event) => finishLauncherDrag(event, true));
-  }
-
-  async function resetLauncherPosition() {
-    launcherPosition = { ...DEFAULT_LAUNCHER_POSITION };
-    applyLauncherPosition();
-    await saveLauncherPosition();
-    tavo.utils.toast('Launcher position reset');
   }
 
   function setStatus(message) {
@@ -1219,8 +1003,26 @@
       .filter(Boolean);
   }
 
+  function withTimeout(promise, milliseconds, label) {
+    return new Promise((resolve, reject) => {
+      const timer = window.setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(milliseconds / 1000)} seconds`)), milliseconds);
+      Promise.resolve(promise).then(
+        (value) => { window.clearTimeout(timer); resolve(value); },
+        (error) => { window.clearTimeout(timer); reject(error); }
+      );
+    });
+  }
+
+  function sanitizeCleanupResponse(text) {
+    return String(text || '')
+      .replace(/^\uFEFF/, '')
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/<analysis>[\s\S]*?<\/analysis>/gi, '')
+      .trim();
+  }
+
   function parseCleanupResponse(text) {
-    let cleaned = String(text || '').trim();
+    let cleaned = sanitizeCleanupResponse(text);
     cleaned = cleaned.replace(/^```(?:json|text|markdown)?\s*/i, '').replace(/\s*```$/, '');
 
     const jsonStart = cleaned.indexOf('{');
@@ -1249,6 +1051,71 @@
     }
 
     return { memories, changes };
+  }
+
+  function buildCleanupRepairPrompt(raw) {
+    return [
+      'Repair the supplied Memory Curator output into the required tagged format.',
+      'Do not analyze the source memories again, invent facts, or expose reasoning.',
+      'Preserve only complete memory and change lines that are actually present.',
+      'Begin with <MEMORIES> and end with </CHANGES>.',
+      'Each memory must be one "- [CORE|CURRENT|HISTORY|OPEN] text" line.',
+      'Return no markdown fences, preamble, commentary, <think>, or <analysis> blocks.',
+      '',
+      'MALFORMED OUTPUT:',
+      String(raw || '').slice(0, 18000)
+    ].join('\n');
+  }
+
+  async function parseCleanupWithRepair(raw) {
+    try {
+      return { ...parseCleanupResponse(raw), repaired: false };
+    } catch (firstError) {
+      const repairedRaw = await withTimeout(tavo.generate(buildCleanupRepairPrompt(raw), {
+        context: false,
+        timeout: REPAIR_TIMEOUT_MS,
+        settings: { temperature: 0.01, maxCompletionTokens: 6000 }
+      }), REPAIR_TIMEOUT_MS, 'Memory cleanup repair');
+      try {
+        return { ...parseCleanupResponse(repairedRaw), repaired: true };
+      } catch (secondError) {
+        throw new Error(`The model response remained unusable after one repair attempt: ${secondError.message || firstError.message}`);
+      }
+    }
+  }
+
+  function memoryStateMatches(actual, expected) {
+    if (!actual || !expected || Boolean(actual.enabled) !== Boolean(expected.enabled)) return false;
+    if (!Array.isArray(actual.memories) || !Array.isArray(expected.memories) || actual.memories.length !== expected.memories.length) return false;
+    return actual.memories.every((memory, index) => memory === expected.memories[index]);
+  }
+
+  function assertProposalCurrent(latest, baseline = currentMemory) {
+    if (!memoryStateMatches(latest, baseline)) {
+      throw new Error('Memories changed after this proposal was prepared. Reload memories and prepare a fresh proposal before applying.');
+    }
+  }
+
+  async function persistMemoryState(desired, rollback = null) {
+    let failure;
+    try {
+      await tavo.memory.update(desired);
+      const verified = await tavo.memory.current();
+      if (memoryStateMatches(verified, desired)) return verified;
+      failure = new Error('Tavo did not preserve the requested memory state');
+    } catch (error) {
+      failure = error;
+    }
+    if (!rollback) throw failure;
+
+    try {
+      await tavo.memory.update(rollback);
+      const restored = await tavo.memory.current();
+      if (!memoryStateMatches(restored, rollback)) throw new Error('Restored state differs from the backup');
+    } catch (error) {
+      throw new Error(`Memory replacement failed, and automatic rollback could not be verified. Use Restore Backup and reload memories. ${error.message || error}`);
+    }
+    throw new Error(`Memory replacement failed; the previous memories were restored automatically. ${failure.message || failure}`);
   }
 
   async function proposeAiCleanup() {
@@ -1300,14 +1167,15 @@
         payload
       ].join('\n');
 
-      rawText = await tavo.generate(prompt, {
+      rawText = await withTimeout(tavo.generate(prompt, {
         context: false,
+        timeout: ANALYSIS_TIMEOUT_MS,
         settings: {
           temperature: 0.1,
           maxCompletionTokens: 8192
         }
-      });
-      const result = parseCleanupResponse(rawText);
+      }), ANALYSIS_TIMEOUT_MS, 'Memory analysis');
+      const result = await parseCleanupWithRepair(rawText);
       if (!Array.isArray(result.memories) || !result.memories.length) {
         throw new Error('The proposal did not contain a non-empty memories array');
       }
@@ -1321,7 +1189,7 @@
       clearRawResponse();
       renderProposed();
       renderChanges();
-      setStatus('AI proposal ready. Compare it with the current list and edit anything necessary before approval.');
+      setStatus(`AI proposal ready${result.repaired ? ' after repairing the model response' : ''}. Compare it with the current list and edit anything necessary before approval.`);
       tavo.utils.toast('AI memory proposal ready');
     } catch (error) {
       setAiWorking(false);
@@ -1350,13 +1218,16 @@
       applyButton.disabled = true;
       setStatus('Saving backup and updating Tavo Memories…');
       const latest = await tavo.memory.current();
+      assertProposalCurrent(latest);
+      const backupMemory = JSON.parse(JSON.stringify(latest));
       await tavo.set(BACKUP_KEY, {
         createdAt: new Date().toISOString(),
-        memory: JSON.parse(JSON.stringify(latest))
+        memory: backupMemory
       }, 'chat');
 
-      latest.memories = proposedMemories.map(formatMemoryItem).filter(Boolean);
-      await tavo.memory.update(latest);
+      const desired = JSON.parse(JSON.stringify(latest));
+      desired.memories = proposedMemories.map(formatMemoryItem).filter(Boolean);
+      await persistMemoryState(desired, backupMemory);
       tavo.utils.toast('Tavo Memories updated');
       await loadMemories();
       setStatus(`Update complete. A backup of the previous list is available through Restore Last Backup.`);
@@ -1381,9 +1252,10 @@
       if (!confirmed) return;
 
       const latest = await tavo.memory.current();
-      latest.enabled = backup.memory.enabled;
-      latest.memories = [...backup.memory.memories];
-      await tavo.memory.update(latest);
+      const desired = JSON.parse(JSON.stringify(latest));
+      desired.enabled = backup.memory.enabled;
+      desired.memories = [...backup.memory.memories];
+      await persistMemoryState(desired, latest);
       tavo.utils.toast('Memory backup restored');
       await loadMemories();
       setStatus('The last Memory Curator backup was restored.');
@@ -1417,14 +1289,28 @@
     sheet.classList.add('tmc-hidden');
   }
 
-  setupLauncherGestures();
-  loadLauncherPosition();
-  window.addEventListener('resize', applyLauncherPosition);
-  window.addEventListener('orientationchange', applyLauncherPosition);
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', applyLauncherPosition);
-    window.visualViewport.addEventListener('scroll', applyLauncherPosition);
+  if (typeof __memoryCuratorTestHarness !== 'undefined' && __memoryCuratorTestHarness) {
+    Object.assign(__memoryCuratorTestHarness, {
+      sanitizeCleanupResponse,
+      parseCleanupResponse,
+      parseCleanupWithRepair,
+      memoryStateMatches,
+      assertProposalCurrent,
+      persistMemoryState
+    });
   }
+
+  let lastOpenNonce = String(tavo.get('tavoMemoryCuratorOpen', 'chat')?.nonce || '');
+  setInterval(() => {
+    try {
+      const command = tavo.get('tavoMemoryCuratorOpen', 'chat');
+      const nonce = String(command?.nonce || '');
+      if (nonce && nonce !== lastOpenNonce) {
+        lastOpenNonce = nonce;
+        openPanel();
+      }
+    } catch (_) {}
+  }, 300);
   document.getElementById('tmc-close').addEventListener('click', closePanel);
   root.querySelector('[data-tmc-close]').addEventListener('click', closePanel);
   document.getElementById('tmc-reload').addEventListener('click', loadMemories);
@@ -1446,6 +1332,5 @@
     rawOutput.classList.toggle('tmc-hidden', expanded);
   });
   copyRawButton.addEventListener('click', copyRawResponse);
-  document.getElementById('tmc-reset-launcher').addEventListener('click', resetLauncherPosition);
 })();
 </script>
